@@ -8,8 +8,6 @@ import org.jfree.chart._
 import axis._
 import org.jfree.chart.plot._
 import org.jfree.data.xy.DefaultXYDataset
-import hk._
-import renderer.category.ScatterRenderer
 import renderer.xy._
 
 
@@ -35,13 +33,13 @@ class DetailPanel extends JPanel {
 
 	def this(parentFrame: Frame) = {
 		this ()
-		setBackground(new Color(230, 230, 255));
+		setBackground(new Color(230, 230, 255))
 		renderer.setSeriesFillPaint(0, Color.blue)
 		renderer.setSeriesShape(0, new Ellipse2D.Double(-1, -1, 2, 2), true)
 		xAxis = new NumberAxis(nameA)
 		yAxis = new NumberAxis(nameB)
-		xAxis.setAutoRange(true);
-		yAxis.setAutoRange(true);
+		xAxis.setAutoRange(true)
+		yAxis.setAutoRange(true)
 		xAxis.setAutoRangeIncludesZero(false)
 		yAxis.setAutoRangeIncludesZero(false)
 		plot = new XYPlot(metricsData, xAxis, yAxis, renderer)
@@ -56,58 +54,58 @@ class DetailPanel extends JPanel {
 		})
 		val layout = new GridBagLayout
 		setLayout(layout)
-		val gbc = new GridBagConstraints;
-		val lbAxisX = new JLabel("X axis");
+		val gbc = new GridBagConstraints
+		val lbAxisX = new JLabel("X axis")
 		val cbAxisX = new JComboBox
 		metrickey.foreach(a => cbAxisX.addItem(a._1))
 		cbAxisX.addItemListener(new ItemListener {
 			def itemStateChanged(p1: ItemEvent) {
 				val name = cbAxisX.getSelectedItem.asInstanceOf[String]
 				val key = metrickey(name)
-				selectKeys(key, keyB.get);
+				selectKeys(key, keyB.get)
 			}
 		})
 		cbAxisX.setSelectedItem(metricname(keyA.get))
-		val lbAxisY = new JLabel("Y axis");
+		val lbAxisY = new JLabel("Y axis")
 		val cbAxisY = new JComboBox
 		metrickey.foreach(a => cbAxisY.addItem(a._1))
 		cbAxisY.addItemListener(new ItemListener {
 			def itemStateChanged(p1: ItemEvent) {
 				val name = cbAxisY.getSelectedItem.asInstanceOf[String]
 				val key = metrickey(name)
-				selectKeys(keyA.get, key);
+				selectKeys(keyA.get, key)
 			}
 		})
 		cbAxisY.setSelectedItem(metricname(keyB.get))
-		gbc.fill = GridBagConstraints.BOTH;
-		gbc.weightx = 1;
-		gbc.weighty = 0;
-		gbc.gridx = 0;
-		gbc.gridy = 0;
-		gbc.gridwidth = 1;
-		gbc.gridheight = 1;
+		gbc.fill = GridBagConstraints.BOTH
+		gbc.weightx = 1d
+		gbc.weighty = 0d
+		gbc.gridx = 0
+		gbc.gridy = 0
+		gbc.gridwidth = 1
+		gbc.gridheight = 1
 		add(lbAxisX, gbc)
-		gbc.gridx = 1;
+		gbc.gridx = 1
 		add(cbAxisX, gbc)
-		gbc.gridx = 2;
+		gbc.gridx = 2
 		add(lbAxisY, gbc)
-		gbc.gridx = 3;
+		gbc.gridx = 3
 		add(cbAxisY, gbc)
-		gbc.weighty = 1;
-		gbc.gridx = 0;
-		gbc.gridy = 1;
-		gbc.gridwidth = 4;
-		gbc.gridheight = 4;
+		gbc.weighty = 1d
+		gbc.gridx = 0
+		gbc.gridy = 1
+		gbc.gridwidth = 4
+		gbc.gridheight = 4
 		add(chartPanel, gbc)
 	}
 
-	def setPopulationData(d: Array[Array[Double]]): Unit = {
+	def setPopulationData(d: Array[Array[Double]]) {
 		populationData = d
 		metricsData.removeSeries("population data")
 		metricsData.addSeries("population data", populationData)
 	}
 
-	def setSelectedData(d: Array[Array[Double]]): Unit = {
+	def setSelectedData(d: Array[Array[Double]]) {
 		selectedData = d
 		println("setSelectedData(): length: %d".format(d.length))
 		metricsData.removeSeries("selected data")
@@ -120,8 +118,8 @@ class DetailPanel extends JPanel {
 		renderer.setSeriesShape(i2, new Ellipse2D.Double(-3, -3, 6, 6), true)
 	}
 
-	def testAddData {
-		setPopulationData(Array(Array(1, 2, 3, 4), Array(2, 4, 6, 7)))
+	def testAddData() {
+		setPopulationData(Array(Array(1d, 2d, 3d, 4d), Array(2d, 4d, 6d, 7d)))
 	}
 
 	def dataChanged(df: DataFolder, ds: CellDataSet) {
@@ -129,17 +127,17 @@ class DetailPanel extends JPanel {
 		if (dataFolder != df) {
 			dataFolder = df
 			selectedIndex = -1
-			recalc = true;
+			recalc = true
 		}
 		if (dataSet != ds) {
 			selectedIndex = -1
 			dataSet = ds
-			recalc = true;
+			recalc = true
 		}
-		if (recalc) recalcAll
+		if (recalc) recalcAll()
 	}
 
-	def recalcAll {
+	def recalcAll() {
 		(keyA, keyB) match {
 			case (Some(ka), Some(kb)) => {
 				if (selectedIndex != -1) {
@@ -174,12 +172,12 @@ class DetailPanel extends JPanel {
 	}
 
 	def selectKeys(k1: String, k2: String) {
-		keyA = Some(k1);
-		keyB = Some(k2);
-		nameA = metricname(k1);
+		keyA = Some(k1)
+		keyB = Some(k2)
+		nameA = metricname(k1)
 		nameB = metricname(k2)
 		xAxis.setLabel(nameA)
 		yAxis.setLabel(nameB)
-		recalcAll
+		recalcAll()
 	}
 }

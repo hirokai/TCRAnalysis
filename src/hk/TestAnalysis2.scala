@@ -15,8 +15,8 @@ object TestAnalysis2 {
 	var images: ArrayBuffer[ImageProcessor] = new ArrayBuffer[ImageProcessor]
 
 	def run(_ip: ImageProcessor, paramStr: String): ImageProcessor = {
-  	  var ip = _ip
-      val f = new ImageWindow(new ImagePlus("Cropped",ip))
+  	  val ip = _ip
+      val _ = new ImageWindow(new ImagePlus("Cropped",ip))
       width = ip.getWidth
   	  height = ip.getHeight
   	  param = paramStr.split(",").map(_.toFloat).toArray
@@ -24,12 +24,12 @@ object TestAnalysis2 {
   	  graddir(p,ip)
   	  val pw = new PrintWriter("debugout.txt")
   	  pw.println(p.sorted.reverse.mkString(" "))
-  	  pw.close
+  	  pw.close()
   	  val result = corr(p,param(0).toInt)
   	  println(result.mkString(" "))
       ip
 	}
-	def graddir(p: Array[Float], ip: ImageProcessor) = {
+	def graddir(p: Array[Float], ip: ImageProcessor) {
 	  for(x <- 1 until width-1; y <- 1 until height-1){
 		  val dx = (ip.get(x+1,y).toFloat-ip.get(x-1,y))/2
 		  val dy = (ip.get(x,y+1).toFloat-ip.get(x,y-1))/2

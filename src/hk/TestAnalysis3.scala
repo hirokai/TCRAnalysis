@@ -14,11 +14,11 @@ object TestAnalysis3 {
 	var images: ArrayBuffer[ImageProcessor] = new ArrayBuffer[ImageProcessor]
 
 	def run(_ip: ImageProcessor, paramStr: String): Float = {
-  	  var ip = _ip
+  	  val ip = _ip
       width = ip.getWidth
   	  height = ip.getHeight
   	  param = paramStr.split(",").map(_.toFloat).toArray
-  	  val p: Array[Float] = new Array[Float](width*height)
+  	  // val p: Array[Float] = new Array[Float](width*height)
   	  val sum = (for(x <- 0 until width; y <- 0 until height) yield ip.get(x,y)).toArray.sum
   	  val entropy = (for(x <- 0 until width; y <- 0 until height) yield {
   	    val p = ip.get(x,y).toFloat/sum

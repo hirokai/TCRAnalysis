@@ -1,7 +1,8 @@
-package hk;
+package hk
 
-import scala.math._;
+import scala.math._
 import java.awt.geom.Point2D
+import java.awt.geom.Point2D.{Float => PFloat}
 
 object TcrAlgorithm extends Enumeration {
   type TcrAlgorithm = Value 
@@ -48,7 +49,7 @@ class Con4[A](var bf: A = null, var ricm: A = null, var tcr: A = null, var icam:
 
   def iterator: Iterator[A] = new Iterator[A]{
     var index = -1
-    def next: A = {
+    def next(): A = {
       index += 1
       index match {
         case 0 => bf
@@ -67,22 +68,27 @@ class Con4[A](var bf: A = null, var ricm: A = null, var tcr: A = null, var icam:
   }
 }
 
+/**
+ * This holds Float values. Float is compatible with ImageProcessor (Double isn't, so stick to Float)
+ * @param x x coordinate
+ * @param y y coordinate
+ */
 class Point2f(val x: Float, val y:Float){
-  def xi: Int = round(x)
-  def yi: Int = round(y)
+  def xi: Int = round(x).toInt
+  def yi: Int = round(y).toInt
   def dist(p: Point2f) = sqrt(pow(x-p.x,2)+pow(y-p.y,2))
   def distsq(p: Point2f) = pow(x-p.x,2)+pow(y-p.y,2)
-  override def toString = "(%.1f,%.1f)".format(x,y)
+  override def toString:String = "(%.1f,%.1f)".format(x,y)
 }
 
 object Point2f{
   implicit def fromPoint2D(p: Point2D.Float): Point2f = new Point2f(p.x,p.y)
-  implicit def toPoint2D(p: Point2f):Point2D.Float  = new Point2D.Float(p.x,p.y)  
+  implicit def toPoint2D(p: Point2f):Point2D.Float  = new PFloat(p.x,p.y)
 }
 
 object Utils {
-	def printStatus(msg: String): Unit = {
+	def printStatus(msg: String) {
 		//Stub!! I want to show the message in lbStatus
-		println(msg);
+		println(msg)
 	}
 }

@@ -38,14 +38,14 @@ object TestAnalysis {
 	
 	def threshold(in: ImageProcessor): ImageProcessor = {
 	  val ip = in.duplicate
-	  ip.autoThreshold
-	  ip.invert
+	  ip.autoThreshold()
+	  ip.invert()
 	  ip
 	}
 
 	def subbg(v: Int)(in: ImageProcessor): ImageProcessor = {
 	  val ip = in.duplicate
-	  val sub = (new BackgroundSubtracter).rollingBallBackground(ip,v,false,false,false,false,false)
+	  // val sub = (new BackgroundSubtracter).rollingBallBackground(ip,v,false,false,false,false,false)
 	  ip
 	}
 	
@@ -83,7 +83,7 @@ object TestAnalysis {
 	def findLocalMax(ips: Array[Array[Int]],minsize:Int,maxsize:Int,threshold:Int): Array[(Int,Int,Int)] = {
 	  val crop = (maxsize+1)/2+1
 //	  val crop = 1
-	  def tosize(i:Int):Int = minsize+i*2
+	  // def tosize(i:Int):Int = minsize+i*2
 	  def eget(x:Int,y:Int,z:Int): Int = {
 	    ips(z)(x*height+y)
 	  }
@@ -101,10 +101,10 @@ object TestAnalysis {
 	  }
 	  maxs.toArray
 	}
-		  def normalize(p: Array[Int],ip:ImageProcessor):Unit = {
+		  def normalize(p: Array[Int],ip:ImageProcessor) {
 	      val wid = 1
 		  val maxval: Float = p.max + 1
-          val minval: Float = p.min + 1
+          // val minval: Float = p.min + 1
           val range: Float = (maxval-0).toFloat
        // 	  println(maxval,minval)
           for(x <- wid until width-wid; y <- wid until height-wid){
@@ -136,7 +136,7 @@ object TestAnalysis {
 
 	def diff(in: ImageProcessor): ImageProcessor = {
 	  val ip = in.duplicate
-	  val g_th = pow(((in.maxValue - in.minValue)/10000),2)
+	 //  val g_th = pow(((in.maxValue - in.minValue)/10000),2)
 	  for(x<-1 until width-1; y<-1 until height-1){
 	    val dx = (in.get(x+1,y).toFloat-in.get(x-1,y))/2
 	    val dy = (in.get(x,y-1).toFloat-in.get(x+1,y-1))/2
@@ -147,15 +147,15 @@ object TestAnalysis {
 
 	def findMax(in: ImageProcessor): ImageProcessor = {
 	  val ip = in.duplicate
-	  var dx: Array[Float] = new Array[Float](width*height)
-	  var dy: Array[Float] = new Array[Float](width*height)
+	  val dx: Array[Float] = new Array[Float](width*height)
+	  val dy: Array[Float] = new Array[Float](width*height)
 	  val g_th = pow(((in.maxValue - in.minValue)/10000),2)
 	  for(x<-1 until width-1; y<-1 until height-1){
 	    dx(x*height+y) = (ip.get(x+1,y).toFloat-ip.get(x-1,y))/2
 	    dy(x*height+y) = (ip.get(x,y+1).toFloat-ip.get(x,y-1))/2
 	  }
-	  var dx2: Array[Float] = new Array[Float](width*height)
-	  var dy2: Array[Float] = new Array[Float](width*height)
+	  val dx2: Array[Float] = new Array[Float](width*height)
+	  val dy2: Array[Float] = new Array[Float](width*height)
 	  for(x<-1 until width-1; y<-1 until height-1){
 	    dx2(x*height+y) = (dx((x+1)*height+y).toFloat-dx((x-1)*height+y))/2
 	    dy2(x*height+y) = (dx(x*height+(y+1)).toFloat-dy(x*height+(y-1)))/2
@@ -213,9 +213,9 @@ object TestAnalysis {
 	  v
 	}
 	
-	def printMat(m: Matrix) = {
+	def printMat(m: Matrix) {
 	  val dimX = m.length
-	  val dimY = m(0).length
+	  // val dimY = m(0).length
 	  for(x<-0 until dimX){
 	    println(m(x).map(_.toString).mkString(" "))
 	  }

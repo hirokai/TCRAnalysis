@@ -1,4 +1,4 @@
-package hk;
+package hk
 
 import java.io.File
 import ij.ImagePlus
@@ -28,7 +28,7 @@ abstract class ImageManager{
   def width = ip.bf.getWidth
   def height = ip.bf.getHeight
   var imps: Array[ImagePlus] = _
-  def release = imps.foreach(imp=>imp.flush)
+  def release() {imps.foreach(imp=>imp.flush())}
 }
 
 class StackImageManager extends ImageManager {

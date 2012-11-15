@@ -43,20 +43,20 @@ class CellDataSet {
   def cells = _cells.toArray
   var observers = ArrayBuffer[CellDataObserver]()
 
-  override def finalize: Unit = {
-    if(img!=null) img.release
+  override def finalize() {
+    if(img!=null) img.release()
   }
-  def removeCell(cs: Array[Cell]) : Unit = {
+  def removeCell(cs: Array[Cell]) {
 	  _cells --= cs
       if(cs.length>0)
     	observers.foreach(_.cellRemoved(cs))
   }
-  def addCell(cx:Float,cy:Float,r:Float):Unit = {
+  def addCell(cx:Float,cy:Float,r:Float) {
     val c = new Cell
     c.boundary = new Circle(cx,cy,r)
     addCell(Array(c))
   }
-  def addCell(cs:Array[Cell]):Unit = {
+  def addCell(cs:Array[Cell]) {
       cs.foreach({c=>
        calcCellMetrics(c,(c.tcrCenter==null)) 
       })
@@ -82,10 +82,10 @@ class CellDataSet {
    	cell.metricsTCR ++= met
 //    println(cell.skewICAM,cell.skewTCR)
   }
-  def recalcAllMetrics: Unit = {
+  def recalcAllMetrics() {
     cells.foreach(calcCellMetrics(_))
   }
-	def readMetricsFromFolder(folder: Path): Unit = {
+	def readMetricsFromFolder(folder: Path) {
 	if(folder.child("celldata.xml").exists)
 	  readMetricsFromXmlFile(folder.child("celldata.xml"))
 	else if(folder.child("celldata_auto.xml").exists)
@@ -98,9 +98,9 @@ class CellDataSet {
 	  throw new Exception("No metrics file.")
 	}
 	 
-	def readMetricsFromXmlFile(m:Path): Unit = {
+	def readMetricsFromXmlFile(m:Path) {
 	  observers.foreach(_.cellRemoved(cells.toArray))
-	  _cells.clear
+	  _cells.clear()
 	  metricsFile = m
 	  try{
 	  val xml = XML.loadFile(m.path)
@@ -113,11 +113,11 @@ class CellDataSet {
 	    cell.tcrCenter = new Point2f(num(0),num(1))
 	    cell.radialTCR = (elem \ "radialtcr").text match{
 	      case "" => None
-	      case s => Some(s.split(" ").map(_.toFloat).toArray)
+	      case s => Some(s.split(" ").map(_.toDouble).toArray)
 	    }
 	    cell.radialICAM = (elem \ "radialicam").text match{
 	      case "" => None
-	      case s => Some(s.split(" ").map(_.toFloat).toArray)
+	      case s => Some(s.split(" ").map(_.toDouble).toArray)
 	    }
 	    calcCellMetrics(cell)
 	    cell
@@ -131,10 +131,10 @@ class CellDataSet {
 	  observers.foreach(_.cellAdded(cells.toArray))
 	}
 		
-	def readMetricsFromTxtFile(m:Path): Unit = {
+	def readMetricsFromTxtFile(m:Path) {
 		metricsFile = m
 		observers.foreach(_.cellRemoved(cells.toArray))
-		_cells.clear
+		_cells.clear()
 	  	println("Loading: "+ metricsFile)
 		for(line <- Source.fromFile(m.file).getLines){
 	   		val token = line.split("\t")
@@ -152,7 +152,7 @@ class CellDataSet {
 //		println("%d cells were loaded from %s".format(cells.length,m.name))
 		observers.foreach(_.cellAdded(cells.toArray))
 	}
-/*	def writeRP: Unit = {
+/*	def writeRP() {
 		import RadialProfileAnalyzer.skewness
 		var cellcount = 0
 		var processcount = 0
@@ -180,7 +180,7 @@ class CellDataSet {
 	    }
 		pw.close
 	}*/
-	def writeMetricsXml(name: String = "celldata.xml"): Unit = {
+	def writeMetricsXml(name: String = "celldata.xml") {
 	  if(metricsFile==null)
 	    return
 	  var str = new StringBuilder("<cellmetricsdata>\n")
@@ -207,10 +207,10 @@ class CellDataSet {
 	  val outpath = metricsFile.parent.child(name)
 	  val pw = new PrintWriter(outpath.file)
 	  pw.print(str)
-	  pw.close
+	  pw.close()
 	  println("Output: " + outpath.path)
 	}
-	def writeMetricsTxt: Unit = {
+	def writeMetricsTxt() {
 	  if(metricsFile==null){
 	    return
 	  }
@@ -221,7 +221,7 @@ class CellDataSet {
 	  }
 	  pw.close
 	}
-	def writeTiledImages: Unit = {
+	def writeTiledImages() {
 	  if(img==null || metricsFile==null)
 	    return
 	  val width = img.ip.tcr.getWidth
@@ -232,7 +232,7 @@ class CellDataSet {
 	  val imadj: Con4[BufferedImage] = new Con4[BufferedImage](img.ip.map(ImgUtils.getAdjustedImage(_)).toArray)
 //	  g.drawImage(imadj.bf,null,0,0);		  g.drawImage(imadj.ricm,null,width,0);
 //	  g.drawImage(imadj.tcr,null,0,height);		  g.drawImage(imadj.icam,null,width,height);
-	  var offset = new Con4[Point](bf = new Point(0,0), ricm = new Point(width,0),
+	  val offset = new Con4[Point](bf = new Point(0,0), ricm = new Point(width,0),
 	      tcr = new Point(0,height), icam = new Point(width,height))
 
 	  imadj.zip(offset).foreach({a => g.drawImage(a._1,null,a._2.x,a._2.y)})
@@ -260,10 +260,10 @@ class CellDataSet {
 	  if(i == -1)
 	    throw new Exception("Cell is not found.")
 	  val c = cells(i)
-	  var xmin: Int = 0;
-	  var xmax: Int = 0;
-	  var ymin: Int = 0;
-	  var ymax: Int = 0;
+	  var xmin: Int = 0
+	  var xmax: Int = 0
+	  var ymin: Int = 0
+	  var ymax: Int = 0
 	  if(fixedSize != 0){
 	  	val r = fixedSize/2
 	  	xmin = (Array(c.boundary.cx-r,0).max).toInt
@@ -285,7 +285,7 @@ class CellDataSet {
     	  case "ICAM" => img.ip.icam
     	  case _ => throw new IllegalArgumentException("getImageOfCell")
 	  	}
-      ip.setRoi(xmin.toInt,ymin,xmax-xmin,ymax-ymin)
+      ip.setRoi(xmin,ymin,xmax-xmin,ymax-ymin)
       ip.crop
     }
 }
@@ -299,8 +299,8 @@ class Cell {
 	val E = 0.0001f
     var boundary: Circle = _
     var tcrCenter: Point2f = null
-    var radialTCR: Option[Array[Float]] = None
-    var radialICAM: Option[Array[Float]]= None
+    var radialTCR: Option[Array[Double]] = None
+    var radialICAM: Option[Array[Double]]= None
     var metricsTCR = new HashMap[String,Float]
     def ==(other: Cell){
 	  println("Cell.==() called.")

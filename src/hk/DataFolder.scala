@@ -53,20 +53,20 @@ object DataFolder {
 		exists ++ made
 	}
 
-	def compileDataFolder(folder: Path, xml: Path, csvtcr: Path, csvicam: Path): Unit = {
-		val outxml = new PrintWriter(xml.file);
-		val outtcr = new PrintWriter(csvtcr.file);
-		val outicam = new PrintWriter(csvicam.file);
+	def compileDataFolder(folder: Path, xml: Path, csvtcr: Path, csvicam: Path) {
+		val outxml = new PrintWriter(xml.file)
+		val outtcr = new PrintWriter(csvtcr.file)
+		val outicam = new PrintWriter(csvicam.file)
 		if (folder == null)
 			return
 		outxml.println("<celldatacompilation>")
-		var count = 0;
+		var count = 0
 		search(folder.file)
 		outxml.println("</celldatacompilation>")
-		outxml.close
-		outtcr.close
-		outicam.close
-		def search(folder: File): Unit = {
+		outxml.close()
+		outtcr.close()
+		outicam.close()
+		def search(folder: File) {
 			val files = folder.listFiles
 			for (f <- files) {
 				//			  println(f.getPath)
@@ -79,18 +79,18 @@ object DataFolder {
 					s.getLines.foreach(outxml.println(_))
 					outxml.println("</datafile>")
 					try {
-						val xml = XML.load(f.toURL);
+						val xml = XML.load(f.toURI.toURL)
 						for (tcr <- xml \\ "radialtcr") {
-							outtcr.println(tcr.text.split("\\s+").mkString(","));
+							outtcr.println(tcr.text.split("\\s+").mkString(","))
 						}
 						for (icam <- xml \\ "radialicam") {
-							outicam.println(icam.text.split("\\s+").mkString(","));
+							outicam.println(icam.text.split("\\s+").mkString(","))
 						}
 					} catch {
-						case e: Exception => println(e.getMessage());
+						case e: Exception => println(e.getMessage)
 					}
-					count += 1;
-					Utils.printStatus("%d files processed.".format(count));
+					count += 1
+					Utils.printStatus("%d files processed.".format(count))
 				}
 			}
 		}

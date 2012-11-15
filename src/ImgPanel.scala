@@ -7,12 +7,15 @@ import java.awt.geom.AffineTransform
 import java.awt.event.MouseListener
 import java.awt.event.MouseEvent
 import java.awt.geom.Point2D
-import javax.swing._;
+//import java.awt.geom.Point2D.Float
+
+
+import javax.swing._
 import java.awt.event.MouseMotionAdapter
-import hk._;
+import hk._
 
 class ImgPanel extends JPanel with MouseListener {
-	var active: Boolean = false;
+	var active: Boolean = false
 	var parentFrame: TCR_Analysis = _
 	var dataSet: CellDataSet = _
 	var dataFolder: DataFolder = _
@@ -32,21 +35,21 @@ class ImgPanel extends JPanel with MouseListener {
 
 	def this(_parent: TCR_Analysis) {
 		this ()
-		parentFrame = _parent;
+		parentFrame = _parent
 
 		val dash1 = Array(10f, 10f)
 		dashStroke = new BasicStroke(4f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER,
-			3.0f, dash1, 0.0f);
-		window = new Dimension();
-		draw = new Dimension();
-		original = new Dimension();
+			3.0f, dash1, 0.0f)
+		window = new Dimension()
+		draw = new Dimension()
+		original = new Dimension()
 		println(original)
-		margin = new Dimension();
+		margin = new Dimension()
 		val scrSize = Toolkit.getDefaultToolkit.getScreenSize
-		window.width = (scrSize.width * 0.6).toInt;
-		window.height = (scrSize.height * 0.8).toInt;
-		margin.width = 0;
-		margin.height = 0;
+		window.width = (scrSize.width * 0.6).toInt
+		window.height = (scrSize.height * 0.8).toInt
+		margin.width = 0
+		margin.height = 0
 		setBackground(new Color(200, 200, 255))
 	}
 
@@ -57,9 +60,9 @@ class ImgPanel extends JPanel with MouseListener {
 		dataSet = ds
 		dataFolder = df
 		if (df != null && ds != null)
-			active = true;
+			active = true
 		else{
-			active = false;
+			active = false
 			return
 		}
 		//    val doneStr = if (ds.metricsFile.name == "celldata.xml") " (revisit)" else " (new)"
@@ -87,11 +90,11 @@ class ImgPanel extends JPanel with MouseListener {
 		}
 		draw.height = round(original.height * scale)
 		draw.width = round(original.width * scale)
-		val off_x = 0;
-		trans.bf = new AffineTransform(scale, 0, 0, scale, off_x, 0);
-		trans.ricm = new AffineTransform(scale, 0, 0, scale, off_x + draw.width, 0);
-		trans.tcr = new AffineTransform(scale, 0, 0, scale, off_x, draw.height);
-		trans.icam = new AffineTransform(scale, 0, 0, scale, off_x + draw.width, draw.height);
+		val off_x = 0
+		trans.bf = new AffineTransform(scale, 0, 0, scale, off_x, 0)
+		trans.ricm = new AffineTransform(scale, 0, 0, scale, off_x + draw.width, 0)
+		trans.tcr = new AffineTransform(scale, 0, 0, scale, off_x, draw.height)
+		trans.icam = new AffineTransform(scale, 0, 0, scale, off_x + draw.width, draw.height)
 		invtrans = new Con4[AffineTransform](trans.map(_.createInverse).toArray)
 	}
 
@@ -119,13 +122,13 @@ class ImgPanel extends JPanel with MouseListener {
 		}
 	}
 
-	override def mousePressed(e: MouseEvent) = {
+	override def mousePressed(e: MouseEvent) {
 		if (e.getButton == MouseEvent.BUTTON3) {
 			val cs = findCellsFromPosition(new Point2D.Float(e.getX, e.getY))
 			dataSet.removeCell(cs)
 		} else if (e.getButton == MouseEvent.BUTTON1) {
 			dragOrigin = new Point(e.getX, e.getY)
-			if(isInsideImage(dragOrigin)){
+			if(isInsideImage(new Point2D.Float(dragOrigin.x,dragOrigin.y))){
 				dragPoint = new Point(e.getX, e.getY)
 				addMouseMotionListener(motion)
 			}else
@@ -244,28 +247,20 @@ class ImgPanel extends JPanel with MouseListener {
 		}).toArray
 	}
 
-	def getIndexOfCell(target: Cell): Int = {
-		val cells = dataSet.cells;
-		for (i <- cells.indices) {
-			if (cells(i) == target) {
-				return i;
-			}
-		}
-		return -1;
-	}
+	def getIndexOfCell(target: Cell): Int = dataSet.cells.indexOf(target)
 
-	override def paintComponent(gg: Graphics): Unit = {
+	override def paintComponent(gg: Graphics) {
 		super.paintComponent(gg)
 		try {
 			//      println("ImgFrame.paintComponent()")
 			if (!active)
-				return;
+				return
 			val g = gg.asInstanceOf[Graphics2D]
 			g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON)
 			calcDimension
 			notrans = g.getTransform
 			im.zip(trans).foreach(a => g.drawImage(a._1, a._2, this))
-			val selected = if (parentFrame.selectedCellIndex == -1)
+			val selected:Cell = if (parentFrame.selectedCellIndex == -1)
 				null
 			else
 				dataSet.cells(parentFrame.selectedCellIndex)
@@ -313,7 +308,7 @@ class ImgPanel extends JPanel with MouseListener {
 			}
 		} catch {
 			case e: Exception =>
-				e.printStackTrace
+				e.printStackTrace()
 		}
 	}
 }

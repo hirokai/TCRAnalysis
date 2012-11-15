@@ -8,7 +8,7 @@ import ij.io.DirectoryChooser
 import javax.swing._
 import scala.util.Random
 import hk._
-import javax.swing.event._;
+import javax.swing.event._
 
 object TCR_Analysis {
 	val defaultFolder = "/Users/hiroyuki/Documents/"
@@ -26,14 +26,19 @@ object TCR_Analysis {
 }*/
 }
 
+/**
+ * Main class. Entry point for the GUI.
+ * @param t window title.
+ */
+
 class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 	var leftPanel: JPanel = null
-	var pnImage: ImgPanel = _;
-	var pnDetail: DetailPanel = _;
-	//  var metrics: Array[Path] = null;
+	var pnImage: ImgPanel = _
+	var pnDetail: DetailPanel = _
+	//  var metrics: Array[Path] = null
 	//  var p_currentIndex: Int = 0
-	var dataFolder: DataFolder = _;
-	var dataSet: CellDataSet = _;
+	var dataFolder: DataFolder = _
+	var dataSet: CellDataSet = _
 
 	//  def currentIndex: Int = p_currentIndex
 
@@ -44,13 +49,13 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 	if (currentIndex < 0 || currentIndex >= metrics.length) return
 	p_currentIndex = v
 	if (currentIndex == 0) {
-	  btPrev.setEnabled(false);
+	  btPrev.setEnabled(false)
 	  btNext.setEnabled(true)
 	} else if (currentIndex == metrics.length - 1) {
-	  btPrev.setEnabled(true);
+	  btPrev.setEnabled(true)
 	  btNext.setEnabled(false)
 	} else {
-	  btPrev.setEnabled(true);
+	  btPrev.setEnabled(true)
 	  btNext.setEnabled(true)
 	}
   }
@@ -64,160 +69,161 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 	var btSave: JButton = _
 	var cbShuffle: JCheckBox = _
 	var lInfoModel: DefaultListModel = _
-	var lInfo: JList = _;
+	var lInfo: JList = _
 	var lbStatus: JLabel = _
 	var cbAutoSave: JCheckBox = _
 	var tfParam: JTextField = _
 	var selectedCellIndex: Int = -1
 
-	private val serialVersionUID = 1L
+	private val serialVersionUID = 2L
 
 	def this() = {
 		this ("TCR analysis")
 		println("this()")
 		if (TCR_Analysis.instance != null) {
-			TCR_Analysis.instance.toFront;
+			TCR_Analysis.instance.toFront()
 		} else {
-			TCR_Analysis.instance = this;
-			addKeyListener(IJ.getInstance);
+			TCR_Analysis.instance = this
+			addKeyListener(IJ.getInstance)
 		}
 		dataSet = CellDataSet.createEmptyDataset
 	}
 
-	override def run(arg: String): Unit = {
+	override def run(arg: String) {
 		println("run()")
-		prepareGUI
+		prepareGUI()
 		setVisible(true)
 	}
 
-	def prepareGUI: Unit = {
-		leftPanel = new JPanel();
-		add(leftPanel);
+	def prepareGUI() {
+		leftPanel = new JPanel()
+		add(leftPanel)
 		val layout = new GridBagLayout
 		leftPanel.setLayout(layout)
 		val gbc = new GridBagConstraints
-		gbc.fill = GridBagConstraints.BOTH;
-		gbc.weightx = 1;
-		gbc.weighty = 0
+		gbc.fill = GridBagConstraints.BOTH
+		gbc.weightx = 1d
+		gbc.weighty = 0d
 
+		//ToDo: Refactor this using GridBagPanel
 		btFolder = new JButton("Open (Scope 7)")
 		btFolder.addActionListener(new ActionListener() {
-			def actionPerformed(e: ActionEvent) = {
-				Config.imgType = 1;
-				setRootFolder
+			def actionPerformed(e: ActionEvent) {
+				Config.imgType = 1
+				setRootFolder()
 			}
-		});
+		})
 		btFolder.setSize(new Dimension(200, 50))
-		gbc.gridx = 0;
-		gbc.gridy = 0;
-		gbc.gridwidth = 3;
+		gbc.gridx = 0
+		gbc.gridy = 0
+		gbc.gridwidth = 3
 		gbc.gridheight = 1
 		leftPanel.add(btFolder, gbc)
 
 		btStack = new JButton("Open (Scope 2)")
 		btStack.addActionListener(new ActionListener() {
-			def actionPerformed(e: ActionEvent) = {
-				Config.imgType = 2;
-				setRootFolder
+			def actionPerformed(e: ActionEvent) {
+				Config.imgType = 2
+				setRootFolder()
 			}
-		});
+		})
 		btStack.setSize(new Dimension(200, 50))
-		gbc.gridx = 3;
-		gbc.gridy = 0;
-		gbc.gridwidth = 3;
+		gbc.gridx = 3
+		gbc.gridy = 0
+		gbc.gridwidth = 3
 		gbc.gridheight = 1
 		leftPanel.add(btStack, gbc)
 
 		btAuto = new JButton("Start auto calc")
 		btAuto.addActionListener(new ActionListener() {
-			def actionPerformed(e: ActionEvent) = doAutoCalc
-		});
+			def actionPerformed(e: ActionEvent) {doAutoCalc()}
+		})
 		btAuto.setSize(new Dimension(200, 50))
-		gbc.gridx = 0;
-		gbc.gridy = 1;
-		gbc.gridwidth = 3;
+		gbc.gridx = 0
+		gbc.gridy = 1
+		gbc.gridwidth = 3
 		gbc.gridheight = 1
 		leftPanel.add(btAuto, gbc)
 
 		val btCompile = new JButton("Compile files")
 		btCompile.addActionListener(new ActionListener() {
-			def actionPerformed(e: ActionEvent) = compileData
-		});
+			def actionPerformed(e: ActionEvent) {compileData()}
+		})
 		btCompile.setSize(new Dimension(200, 50))
-		gbc.gridx = 3;
-		gbc.gridy = 1   ;
-		gbc.gridwidth = 3;
+		gbc.gridx = 3
+		gbc.gridy = 1
+		gbc.gridwidth = 3
 		gbc.gridheight = 1
 		leftPanel.add(btCompile, gbc)
 
 		btPrev = new JButton("Prev")
 		btPrev.addActionListener(new ActionListener() {
-			def actionPerformed(e: ActionEvent) = moveFileIndex(-1)
-		});
+			def actionPerformed(e: ActionEvent) {moveFileIndex(-1)}
+		})
 		btPrev.setSize(new Dimension(100, 50))
-		gbc.gridx = 0;
-		gbc.gridy = 2;
-		gbc.gridwidth = 2;
+		gbc.gridx = 0
+		gbc.gridy = 2
+		gbc.gridwidth = 2
 		gbc.gridheight = 1
 		leftPanel.add(btPrev, gbc)
 
 		btNext = new JButton("Next")
 		btNext.addActionListener(new ActionListener() {
-			def actionPerformed(e: ActionEvent) = moveFileIndex(1)
-		});
+			def actionPerformed(e: ActionEvent) {moveFileIndex(1)}
+		})
 		btNext.setSize(new Dimension(100, 50))
-		gbc.gridx = 4;
-		gbc.gridy = 2;
-		gbc.gridwidth = 2;
+		gbc.gridx = 4
+		gbc.gridy = 2
+		gbc.gridwidth = 2
 		gbc.gridheight = 1
 		leftPanel.add(btNext, gbc)
 
 		btSave = new JButton("Save")
 		btSave.addActionListener(new ActionListener() {
-			def actionPerformed(e: ActionEvent) = {
-				dataSet.recalcAllMetrics
+			def actionPerformed(e: ActionEvent) {
+				dataSet.recalcAllMetrics()
 				dataSet.writeMetricsXml()
 			}
-		});
+		})
 		btSave.setSize(new Dimension(100, 50))
-		gbc.gridx = 0;
-		gbc.gridy = 3;
-		gbc.gridwidth = 3;
+		gbc.gridx = 0
+		gbc.gridy = 3
+		gbc.gridwidth = 3
 		gbc.gridheight = 1
 		//		btSave.setEnabled(!Config.autoSave)
 		leftPanel.add(btSave, gbc)
 
 		cbAutoSave = new JCheckBox("Autosave")
 		cbAutoSave.addItemListener(new ItemListener() {
-			def itemStateChanged(e: ItemEvent) = {
+			def itemStateChanged(e: ItemEvent) {
 				Config.autoSave = cbAutoSave.isSelected
 				//			  btSave.setEnabled(!Config.autoSave)
 			}
-		});
+		})
 		cbAutoSave.setSelected(Config.autoSave)
 		cbAutoSave.setSize(new Dimension(100, 50))
-		gbc.gridx = 3;
-		gbc.gridy = 3;
-		gbc.gridwidth = 3;
+		gbc.gridx = 3
+		gbc.gridy = 3
+		gbc.gridwidth = 3
 		gbc.gridheight = 1
 		leftPanel.add(cbAutoSave, gbc)
 
 		val btTest = new JButton("Test")
 		btTest.addActionListener(new ActionListener() {
-			def actionPerformed(e: ActionEvent) = testAlgorithm
-		});
+			def actionPerformed(e: ActionEvent) {testAlgorithm()}
+		})
 		btTest.setSize(new Dimension(100, 50))
-		gbc.gridx = 0;
-		gbc.gridy = 4;
-		gbc.gridwidth = 3;
+		gbc.gridx = 0
+		gbc.gridy = 4
+		gbc.gridwidth = 3
 		gbc.gridheight = 1
 		leftPanel.add(btTest, gbc)
 
 		tfParam = new JTextField
 		tfParam.setSize(new Dimension(100, 50))
-		gbc.gridx = 3;
-		gbc.gridy = 4;
-		gbc.gridwidth = 3;
+		gbc.gridx = 3
+		gbc.gridy = 4
+		gbc.gridwidth = 3
 		gbc.gridheight = 1
 		leftPanel.add(tfParam, gbc)
 
@@ -225,20 +231,20 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 		TcrAlgorithm.name.values.map(chAlgorithm.addItem(_))
 		chAlgorithm.setSelectedItem(TcrAlgorithm.name(Config.tcrCenterAlgorithm))
 		chAlgorithm.addItemListener(new ItemListener() {
-			def itemStateChanged(e: ItemEvent): Unit = {
+			def itemStateChanged(e: ItemEvent) {
 				Config.tcrCenterAlgorithm = chAlgorithm.getSelectedIndex match {
 					case 0 => TcrAlgorithm.CoM
 					case 1 => TcrAlgorithm.CoM3
 					case 2 => TcrAlgorithm.CoMsubtractBG
 					case 3 => TcrAlgorithm.CoM3subtractBG
 				}
-				dataSet.recalcAllMetrics
+				dataSet.recalcAllMetrics()
 			}
 		})
 		chAlgorithm.setSize(new Dimension(100, 50))
-		gbc.gridx = 3;
-		gbc.gridy = 5;
-		gbc.gridwidth = 3;
+		gbc.gridx = 3
+		gbc.gridy = 5
+		gbc.gridwidth = 3
 		gbc.gridheight = 1
 		leftPanel.add(chAlgorithm, gbc)
 
@@ -246,7 +252,7 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 		CellPickMethod.name.values.map(chPickCells.addItem(_))
 		chPickCells.setSelectedItem(CellPickMethod.name(Config.cellPickMethod))
 		chPickCells.addItemListener(new ItemListener() {
-			def itemStateChanged(e: ItemEvent): Unit = {
+			def itemStateChanged(e: ItemEvent) {
 				Config.cellPickMethod = chPickCells.getSelectedIndex match {
 					case 0 => CellPickMethod.CircleOrigin
 					case 1 => CellPickMethod.CircleRect
@@ -254,80 +260,80 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 			}
 		})
 		chPickCells.setSize(new Dimension(100, 50))
-		gbc.gridx = 0;
-		gbc.gridy = 5;
-		gbc.gridwidth = 3;
+		gbc.gridx = 0
+		gbc.gridy = 5
+		gbc.gridwidth = 3
 		gbc.gridheight = 1
 		leftPanel.add(chPickCells, gbc)
 
-		lInfoModel = new DefaultListModel;
-		lInfo = new JList(lInfoModel);
+		lInfoModel = new DefaultListModel
+		lInfo = new JList(lInfoModel)
 		lInfo.setSelectionMode(ListSelectionModel.SINGLE_SELECTION)
 		lInfo.setSize(new Dimension(200, 300))
 		lInfo.addListSelectionListener(new ListSelectionListener {
-			def valueChanged(e: ListSelectionEvent): Unit = {
-				val index = lInfo.getSelectedIndex;
-				doAction("SelectCell", index);
+			def valueChanged(e: ListSelectionEvent) {
+				val index = lInfo.getSelectedIndex
+				doAction("SelectCell", index)
 			}
-		});
+		})
 		val spInfo = new JScrollPane(lInfo, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
 			ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED)
 
-		gbc.gridx = 0;
-		gbc.gridy = 6;
-		gbc.gridwidth = 6;
-		gbc.gridheight = 3;
-		gbc.weighty = 4;
+		gbc.gridx = 0
+		gbc.gridy = 6
+		gbc.gridwidth = 6
+		gbc.gridheight = 3
+		gbc.weighty = 4d
 		leftPanel.add(spInfo, gbc)
 		pnDetail = new DetailPanel(this)
-		gbc.gridx = 0;
-		gbc.gridy = 12;
-		gbc.gridwidth = 6;
-		gbc.gridheight = 8;
-		gbc.weighty = 4;
+		gbc.gridx = 0
+		gbc.gridy = 12
+		gbc.gridwidth = 6
+		gbc.gridheight = 8
+		gbc.weighty = 4d
 		leftPanel.add(pnDetail, gbc)
 
 
 		lbStatus = new JLabel
 		lbStatus.setSize(new Dimension(50, 300))
-		gbc.gridx = 0;
-		gbc.gridy = 18;
-		gbc.gridwidth = 6;
+		gbc.gridx = 0
+		gbc.gridy = 18
+		gbc.gridwidth = 6
 		gbc.gridheight = 1
-		gbc.weighty = 0;
+		gbc.weighty = 0d
 		leftPanel.add(lbStatus, gbc)
 
-		pnImage = new ImgPanel(this);
+		pnImage = new ImgPanel(this)
 		pnImage.init
 
-		val leftBigPanel = new JSplitPane(JSplitPane.VERTICAL_SPLIT,leftPanel,pnDetail);
+		val leftBigPanel = new JSplitPane(JSplitPane.VERTICAL_SPLIT,leftPanel,pnDetail)
 		leftBigPanel.setContinuousLayout(true)
 
-		val splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftBigPanel, pnImage);
+		val splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftBigPanel, pnImage)
 		splitPane.setContinuousLayout(true)
 		add(splitPane)
 
 		addWindowListener(new WindowAdapter() {
-			override def windowClosed(e: WindowEvent) = {
-				dispose
+			override def windowClosed(e: WindowEvent) {
+				dispose()
 				if (Config.autoSave) {
-					dataSet.recalcAllMetrics
+					dataSet.recalcAllMetrics()
 					dataSet.writeMetricsXml()
 				}
 				dataSet = null
 				dataFolder = null
 			}
 		})
-		splitPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0),"nextFile");
-		splitPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0),"prevFile");
-		splitPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0),"removeCell");
+		splitPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0),"nextFile")
+		splitPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0),"prevFile")
+		splitPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT).put(KeyStroke.getKeyStroke(KeyEvent.VK_BACK_SPACE, 0),"removeCell")
 		splitPane.getActionMap.put("nextFile",moveNextFileAction)
 		splitPane.getActionMap.put("prevFile",movePrevFileAction)
 		splitPane.getActionMap.put("removeCell",removeSelectedCellAction)
 
 		setPreferredSize(new Dimension(1000, 700))
-		setExtendedState(getExtendedState() | Frame.MAXIMIZED_BOTH);
-		pack
+		setExtendedState(getExtendedState | Frame.MAXIMIZED_BOTH)
+		pack()
 	}
 
 	val moveNextFileAction = new AbstractAction() {
@@ -348,7 +354,7 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 			if (i != -1) {
 				val c = dataSet.cells(i)
 				dataSet.removeCell(Array(c))
-				repaint
+				repaint()
 			}
 		}
 	}
@@ -384,34 +390,34 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 		}
 	}
 
-	def moveFileIndex(diff: Int): Unit = {
+	def moveFileIndex(diff: Int) {
 		if (dataFolder.currentIndex + diff >= dataFolder.fileCount || dataFolder.currentIndex + diff < 0)
 			return
 		setUIEnabled(false)
 		if (Config.autoSave) {
-			dataSet.recalcAllMetrics
+			dataSet.recalcAllMetrics()
 			dataSet.writeMetricsXml()
 		}
 		dataFolder.currentIndex += diff
 		selectedCellIndex = -1
 		dataFolder.getCurrentDataSet.observers += this
 		dataSet = dataFolder.getCurrentDataSet
-		cellListViewUpdate
+		cellListViewUpdate()
 		setUIEnabled(true)
 		pnImage.dataChanged(dataFolder,dataSet)
 		pnDetail.dataChanged(dataFolder,dataSet)
 	}
 
-	def cellListViewUpdate: Unit = {
+	def cellListViewUpdate() {
 		if(dataSet!=null){
-			lInfoModel.removeAllElements
+			lInfoModel.removeAllElements()
 			dataSet.cells.foreach(d => {
-				lInfoModel.addElement(d.formatted);
+				lInfoModel.addElement(d.formatted)
 			})
 		}
 	}
 
-	def selectCellMove(diff: Int): Unit = {
+	def selectCellMove(diff: Int) {
 		if (selectedCellIndex + diff >= dataSet.cells.length || selectedCellIndex + diff < 0)
 			return
 		selectedCellIndex += diff
@@ -419,15 +425,15 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 		lInfo.setSelectedIndex(selectedCellIndex)
 	}
 
-	def setRootFolder: Unit = {
+	def setRootFolder() {
 		DirectoryChooser.setDefaultDirectory(TCR_Analysis.defaultFolder)
-		var folder: String = (new DirectoryChooser("Choose a target folder of analysis")).getDirectory
+		val folder: String = (new DirectoryChooser("Choose a target folder of analysis")).getDirectory
 		println(folder)
 		if (folder == null)
 			return
 		var ds: CellDataSet = null
 		if (Config.autoSave && dataFolder != null && (ds = dataFolder.getCurrentDataSet) != null) {
-			ds.recalcAllMetrics
+			ds.recalcAllMetrics()
 			ds.writeMetricsXml()
 		}
 		val metrics = DataFolder.searchAndMakeMetrics(folder)
@@ -440,14 +446,14 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 		dataFolder.currentIndex = 0
 		dataSet = dataFolder.getCurrentDataSet
 		dataSet.observers += this
-		cellListViewUpdate
+		cellListViewUpdate()
 		pnImage.dataChanged(dataFolder,dataSet)
 		pnDetail.dataChanged(dataFolder,dataSet)
 	}
 
-	def doAutoCalc: Unit = {
+	def doAutoCalc() {
 		var allfilecount = 0
-		var allcellcount = 0
+		// var allcellcount = 0
 		val proceed = IJ.showMessageWithCancel("TCR analysis",
 			"%d files will be processed. It may take a long time".format(dataFolder.fileCount))
 		if (!proceed)
@@ -474,7 +480,7 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 		lbStatus.setText("Auto calc done.")
 	}
 
-	def testAlgorithm: Unit = {
+	def testAlgorithm() {
 		if (selectedCellIndex == -1)
 			return
 		val cell = dataSet.cells(selectedCellIndex)
@@ -483,38 +489,38 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 			TestAnalysis3.run(newip, tfParam.getText)
 		} catch {
 			case e: Exception => IJ.error(e.getClass.getName, e.getMessage)
-			e.printStackTrace
+			e.printStackTrace()
 		}
 	}
 
-	def compileData: Unit = {
+	def compileData() {
 		DirectoryChooser.setDefaultDirectory(TCR_Analysis.defaultFolder)
 		val folder: String = (new DirectoryChooser("Choose a target folder of analysis")).getDirectory
 		if (folder != null) {
 			val xml: Path = new Path(folder + File.separator + "alldata.xml")
 			val csvtcr: Path = new Path(folder + File.separator + "radial_tcr.csv")
 			val csvicam: Path = new Path(folder + File.separator + "radial_icam.csv")
-			DataFolder.compileDataFolder(new Path(folder), xml, csvtcr, csvicam);
+			DataFolder.compileDataFolder(new Path(folder), xml, csvtcr, csvicam)
 		}
 	}
 
-	def doAction(command: String, paramInt: Int) = {
+	def doAction(command: String, paramInt: Int) {
 		println("doAction(): %s, %d".format(command, paramInt))
 		command match {
 			case "SelectCell" =>
 				selectedCellIndex = paramInt
 				pnDetail.selectCell(selectedCellIndex)
-				repaint
+				repaint()
 			case "ShowCellInfo" =>
 				selectedCellIndex = paramInt
 				if (selectedCellIndex >= 0)
-					showCellInfo(dataSet.cells(selectedCellIndex));
+					showCellInfo(dataSet.cells(selectedCellIndex))
 			case _ =>
 		}
 	}
 
-	def showCellInfo(cell: Cell): Unit = {
-		val dialog = new JFrame("Cell info");
+	def showCellInfo(cell: Cell)() {
+		val dialog = new JFrame("Cell info")
 		val keys = cell.metricsTCR.keys.toArray.sorted
 		val str = keys.map(k => k + "\t\t" + cell.metricsTCR(k)).mkString("\n")
 		val ta = new JTextArea(str)
@@ -526,7 +532,7 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 		dialog.add(tfSize)
 		val btImg = new JButton("Output image")
 		btImg.addActionListener(new ActionListener {
-			def actionPerformed(e: ActionEvent): Unit = {
+			def actionPerformed(e: ActionEvent) {
 				val size = tfSize.getText.toInt
 				val ipBf = dataSet.getImageOfCell(cell, "BF", size)
 				val f4 = new ImageWindow(new ImagePlus("BF", ipBf))
@@ -548,33 +554,32 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 		})
 		dialog.add(btImg)
 		dialog.setSize(300, 200)
-		dialog.pack
+		dialog.pack()
 		dialog.setVisible(true)
 	}
 
-	def cellRemoved(cells: Array[Cell]): Unit = {
+	def cellRemoved(cells: Array[Cell]) {
 		//    println("TCR_Analysis.cellRemoved()")
 		selectedCellIndex = -1
-		cellListViewUpdate
+		cellListViewUpdate()
 		pnImage.repaint(null)
 	}
 
-	def cellAdded(cells: Array[Cell]): Unit = {
-		println("cellAdded(): %d.cells.".format(cells.length));
+	def cellAdded(cells: Array[Cell]) {
+		println("cellAdded(): %d.cells.".format(cells.length))
 		cells.foreach(c =>
 			lInfoModel.addElement(c.formatted)
 		)
 		pnImage.repaint(null)
 	}
 
-	def shuffleArray[A](a: Array[A]): Unit = {
+	def shuffleArray[A](a: Array[A]) {
 		val len = a.length
-		var numSet = (0 until len).toSet
 		for (i <- 0 until len - 1) {
 			val j = Random.nextInt(len - i - 1) + i + 1
 			swap(a, i, j)
 		}
-		def swap(a: Array[A], i: Int, j: Int): Unit = {
+		def swap(a: Array[A], i: Int, j: Int) {
 			val temp: A = a(i)
 			a(i) = a(j)
 			a(j) = temp
