@@ -65,11 +65,11 @@ class CellDataSet {
     	observers.foreach(_.cellAdded(cs))
   }
   def calcCellMetrics(cell: Cell, calcTcr:Boolean = true){
-    import RadialProfileAnalyzer._
+    import CellImageAnalyzer._
     //Assuming boundary input.
     var tcr: Circle = null
     if(calcTcr || cell.tcrCenter==null){
-    	val center = RadialProfileAnalyzer.calcTcrCenter(img.ip.tcr,cell.boundary,Config.tcrCenterAlgorithm)
+    	val center = CellImageAnalyzer.calcTcrCenter(img.ip.tcr,cell.boundary,Config.tcrCenterAlgorithm)
     	tcr = new Circle(center.x,center.y,cell.boundary.r)
     	cell.tcrCenter = new Point2f(tcr.cx,tcr.cy)
     }else{
@@ -153,7 +153,7 @@ class CellDataSet {
 		observers.foreach(_.cellAdded(cells.toArray))
 	}
 /*	def writeRP() {
-		import RadialProfileAnalyzer.skewness
+		import CellImageAnalyzer.skewness
 		var cellcount = 0
 		var processcount = 0
 		val outradial = metricsFile.parent.child("radialprofile.txt").file

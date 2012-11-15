@@ -17,7 +17,7 @@ class DetailPanel extends JPanel {
 	var nameB = "Y axis"
 	var keyA: Option[String] = Some("radcom")
 	var keyB: Option[String] = Some("radskew")
-	val metricname: Map[String, String] = RadialProfileAnalyzer.availableMetrics
+	val metricname: Map[String, String] = CellImageAnalyzer.availableMetrics
 	val metrickey: Map[String, String] = metricname.map(a => (a._2, a._1))
 	var metricsData = new DefaultXYDataset
 	var dataSet: CellDataSet = _

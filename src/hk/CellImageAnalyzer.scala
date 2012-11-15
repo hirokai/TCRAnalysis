@@ -8,7 +8,96 @@ import TcrAlgorithm._
 /**
  * ToDo: ImageProcessor holds value as Float, so conversion between double and float is cumbersome.
  */
-object RadialProfileAnalyzer{
+
+
+/*
+/**
+ * Base trait for metrics functions
+ *
+ */
+trait MetricFunction {
+	import CellImageAnalyzer.inner_product
+	val name: String
+	val longName: String
+
+	/**
+	 * Before calling this, some functions such as
+	 * addPixel (for MetricFunctionFromImage; for all pixels to consider)
+	 * or setRadialProfile(for MetricFunctionFromRadialProfile) has to be called.
+	 * @return metric value
+	 */
+	def value: Option[Float] = None
+}
+
+/**
+ * Metric that can be calculated from image.
+ */
+trait MetricFunctionFromImage extends MetricFunction {
+	def addPixel(x:Int,y:Int,v:Float,bg: Float): Unit
+}
+
+/**
+ * Metric based on radial profile.
+ */
+trait MetricFunctionFromRadialProfile extends MetricFunction {
+	def valueFromRadialProfile(radial: Array[Double]): Float
+}
+
+object MinIntensity extends MetricFunction{
+	val name = "minIntensity"
+	val longName = "Minimum intensity"
+	def addPixel(x:Int,y:Int,v:Float,bg:Float) {
+		minVal = min(v,minVal)
+	}
+	def value = Some(minVal)  // Stub
+
+	var minVal = 0f
+}
+
+object TotalIntensity extends MetricFunction{
+	val name = "pixelSum"
+	val longName = "Total intensity"
+	def addPixel(x:Int,y:Int,v:Float,bg:Float) {
+		sum += v
+	}
+	override def value = Some(sum)  // Stub
+
+	var sum = 0f
+}
+
+object Entropy extends MetricFunction {
+	val name = "entropy"
+	val longName = "Entropy"
+	def addPixel(x:Int,y:Int,v:Float,bg:Float) {
+		sum += v
+	}
+	override def value = Some(sum)
+
+	var sum = 0f
+}
+
+object EntropyPerPixel extends MetricFunction {
+	val name = "entropy"
+	val longName = "Entropy"
+	def addPixel(x:Int,y:Int,v:Float,bg:Float) {
+		sum += v
+	}
+	def value = Some(sum/area)
+
+	var sum = 0f
+}
+
+object Skewness extends MetricFunctionFromRadialProfile {
+	import CellImageAnalyzer.{inner_product,normalize}
+	val name = "radskew"
+	val longName = "Skewness"
+
+}
+
+*/
+
+object CellImageAnalyzer{
+	val emptyMetricsResult = availableMetrics.keys.map(k => {k -> Float.NaN}).toMap
 	def checkRadius(bf:Circle, tcr:Circle,width:Int,height:Int): Boolean = {
 		val xmin = min(bf.cx-bf.r,tcr.cx-tcr.r)
 		val xmax = max(bf.cx+bf.r,tcr.cx+tcr.r)
@@ -16,14 +105,23 @@ object RadialProfileAnalyzer{
 		val ymax = max(bf.cy+bf.r,tcr.cy+tcr.r)
 		xmin>=0 && xmax < width && ymin >= 0 && ymax < height
 	}
-	def availableMetrics: Map[String,String] = {
-		Map("minIntensity"->"Minimum intensity","pixelSum"->"Total intensity","entropy"->"Entropy","radcom"->"CoM","radskew"->"Skewness",
+	/*
+	val metricFunctionsA: Array[MetricFunctionFromImage] =
+		Array(MinIntensity,TotalIntensity,Entropy,EntropyPerPixel,DistMean,DistVar,
+					TotalIntensityBGSub,EntropyBGSub,EntropyPerPixelBGSub,
+					DistMeanBGSub,DistVarBGSub)
+	val metricFunctionsB: Array[MetricFunctionFromRadialProfile] =
+		Array(CenterOfMass,Skewness,CenterOfMassBGSub,SkewnessBGSub,Gini,GiniBGSub)
+//	val availableMetrics: Map[String,String] = (metricFunctionsA++metricFunctionsB).map(f => {f.name -> f.longName}).toMap
+*/
+	val availableMetrics =
+		Map("entropy"->"Entropy","radcom"->"CoM","radskew"->"Skewness",
 			"entropyPerPixel"->"Entropy per pixel", "distMean"->"Mean distance", "distVariance"->"Distance variance",
 			"pixelSumBS"->"Total intensity (BG subtracted)","entropyBS"->"Entropy (BG subtracted)","radcomBS"->"CoM (BG subtracted)",
 			"radskewBS"->"Skewness (BG subtracted)","entropyPerPixelBS"->"Entropy per pixel (BG subtracted)",
 			"distMeanBS"->"Mean distance (BG subtracted)", "distVarianceBS"->"Distance variance (BG subtracted)",
 			"radgini"->"Gini coefficient", "radginiBS"->"Gini coefficient (BG subtracted)")
-	}
+
 
 	def getRadialProfile(ip: ImageProcessor, bf: Circle, tcr: Circle, num_bins: Int = -1): Option[Array[Double]]  = {
 		val height = ip.getHeight
@@ -33,20 +131,22 @@ object RadialProfileAnalyzer{
 		val numBin = if(num_bins>0) num_bins else Config.numBin
 		//var index = 0
 		//val intensity = new Array[Double](numBin)
-		if(!checkRadius(bf,tcr,width,height))
-			return None
-		val count = new Array[Int](numBin)
-		val sum = new Array[Int](numBin)
-		val rint = tcr.r / numBin
-		for(x <-round(tcr.cx-tcr.r) until round(tcr.cx+tcr.r); y <-round(tcr.cy-tcr.r) until round(tcr.cy+tcr.r)){
-			val bin = (floor(dist(tcr.cx,tcr.cy,x,y)/rint)).toInt
-			if(bin<numBin){
-				count(bin) +=  1
-				sum(bin) += ip.get(x.toInt,y.toInt).toInt
+		if(!checkRadius(bf,tcr,width,height)){
+			None
+		}else{
+			val count = new Array[Int](numBin)
+			val sum = new Array[Int](numBin)
+			val rint = tcr.r / numBin
+			for(x <-round(tcr.cx-tcr.r) until round(tcr.cx+tcr.r); y <-round(tcr.cy-tcr.r) until round(tcr.cy+tcr.r)){
+				val bin = (floor(dist(tcr.cx,tcr.cy,x,y)/rint)).toInt
+				if(bin<numBin){
+					count(bin) +=  1
+					sum(bin) += ip.get(x,y)
+				}
 			}
+			val ret = sum.zip(count).map(a=>a._1.toDouble/a._2)
+			Some(ret)
 		}
-		val ret = sum.zip(count).map(a=>a._1.toDouble/a._2)
-		Some(ret)
 	}
 	def calcTcrCenter(ip: ImageProcessor, bf: Circle, algo: TcrAlgorithm):Point2f = {
 		calcTcrCenter(ip,new Point2f(bf.cx,bf.cy),bf.r,algo)
@@ -79,12 +179,7 @@ object RadialProfileAnalyzer{
 		val area:Float = (radius*radius*3.14159).toFloat
 		def dist(ax:Float,ay:Float,bx:Float,by:Float): Float = sqrt(pow(ax-bx,2)+pow(ay-by,2)).toFloat
 		if(!checkRadius(bf,tcr,ip.getWidth,ip.getHeight))
-			return Map("minIntensity"->Float.NaN,"pixelSum"->Float.NaN,"entropy"->Float.NaN,"radcom"->Float.NaN,"radskew"->Float.NaN,
-				"entropyPerPixel"->Float.NaN, "distMean"->Float.NaN, "distVariance"->Float.NaN,
-				"pixelSumBS"->Float.NaN,"entropyBS"->Float.NaN,"radcomBS"->Float.NaN,"radskewBS"->Float.NaN,
-				"entropyPerPixelBS"->Float.NaN, "distMeanBS"->Float.NaN, "distVarianceBS"->Float.NaN,
-				"radgini"->Float.NaN, "radginiBS"->Float.NaN
-			)
+			return emptyMetricsResult
 		var minint: Int = ip.get(round(tcr.cx).toInt,round(tcr.cy).toInt)
 		var pixelsum = 0f
 		for(x <-round(tcr.cx-tcr.r) until round(tcr.cx+tcr.r); y <-round(tcr.cy-tcr.r) until round(tcr.cy+tcr.r) if dist(x,y,tcr.cx,tcr.cy)<radius){
@@ -95,28 +190,18 @@ object RadialProfileAnalyzer{
 		val pixelsumbs = pixelsum - minint*area
 
 		//Metrics based on radial profile
-		val radcom: Float = radial match {
-			case Some(r) => centerofmass(r).toFloat
-			case None => Float.NaN
-		}
-		val radcombs: Float = radial match {
-			case Some(r) => centerofmass(r.map(v => {(v - minint)})).toFloat
-			case None => Float.NaN
-		}
-		val radskew = skewness(radial).toFloat
-		val radskewbs: Float = radial match {
-			case Some(r) => skewness(r.map(_-minint)).toFloat
-			case None => Float.NaN
-		}
-		val radvar = variance(radial).toFloat
-		val radvarbs: Float = radial match {
-			case Some(r) => variance(r.map(_-minint)).toFloat
-			case None => Float.NaN
-		}
-		val radgini = gini(radial).toFloat
-		val radginibs: Float = radial match {
-			case Some(r) => gini(r.map(_-minint)).toFloat
-			case None => Float.NaN
+
+		val (radcom,radcombs,radskew,radskewbs,radvar,radvarbs,radgini,radginibs) = radial match {
+			case Some(r) => {
+				import RadialProfileAnalyzer._
+				(centerofmass(r).toFloat,centerofmass(r.map(v => {(v - minint)})).toFloat,
+				 skewness(r).toFloat,centerofmass(r.map(v => {(v - minint)})).toFloat,
+				 variance(r).toFloat,variance(r.map(_-minint)).toFloat,
+				 gini(r).toFloat, gini(r.map(_-minint)).toFloat)
+			}
+			case None => {
+				(Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN)
+			}
 		}
 
 		//Metrics that are directly calculated from image
@@ -148,53 +233,45 @@ object RadialProfileAnalyzer{
 		distvar /= pixelsum
 		distvarbs /= pixelsumbs
 
-		Map("minIntensity"->minint,"pixelSum"->pixelsum,"entropy"->entropy,"radcom"->radcom,"radskew"->radskew,"radvar"->radvar,
-			"entropyPerPixel"->entropy/area, "distMean"->distmean, "distVariance"->distvar,
-			"pixelSumBS"->pixelsumbs,"entropyBS"->entropybs,"radcomBS"->radcombs,"radskewBS"->radskewbs,"radvarBS"->radvarbs,
-			"entropyPerPixelBS"->entropybs/area, "distMeanBS"->distmeanbs, "distVarianceBS"->distvarbs,
+		Map(
+			//Metrics that are calculated directly from image
+			//Intensity
+			"minIntensity"->minint,"pixelSum"->pixelsum,"pixelSumBS"->pixelsumbs,
+			//Entropy
+			"entropy"->entropy, "entropyBS"->entropybs, "entropyPerPixel"->entropy/area,"entropyPerPixelBS"->entropybs/area,
+			//Mean distance from center
+			"distMean"->distmean, "distMeanBS"->distmeanbs,
+			//Variance of distance from center
+			"distVariance"->distvar, "distVarianceBS"->distvarbs,
+
+			//Metrics from radial profile
+			"radcom"->radcom,"radskew"->radskew,"radvar"->radvar,
+			"radcomBS"->radcombs,"radskewBS"->radskewbs,"radvarBS"->radvarbs,
 			"radgini"->radgini, "radginiBS"->radginibs
 		)
 	}
-/*	def getMetricsOld(ip: ImageProcessor, bf: Circle, tcr: Circle): Map[String,Float]  = {
-		val height = ip.getHeight
-		val width = ip.getWidth
-		val radius = tcr.r*2
-		def dist(ax:Double,ay:Double,bx:Double,by:Double): Double = sqrt(pow(ax-bx,2)+pow(ay-by,2))
 
-		if(!checkRadius(bf,tcr,width,height))
-			return Map("pixelSum"->Double.NaN,"entropy"->Double.NaN,
-				"entropyPerPixel"->Double.NaN, "distMean"->Double.NaN, "distVariance"->Double.NaN)
-		var pixelsum = 0
-		for(x <- 0 until width; y <- 0 until height){ pixelsum += ip.get(x,y) }
-		val entropy = (for(x <-round(tcr.cx-tcr.r).toInt until round(tcr.cx+tcr.r).toInt; y <-round(tcr.cy-tcr.r).toInt until round(tcr.cy+tcr.r).toInt) yield {
-			val p = ip.get(x,y) / pixelsum
-			(if(p>0) -p * log(p) else 0)
-		}).toArray.sum
-		val distmean: Double = (for(x <-round(tcr.cx-tcr.r).toInt until round(tcr.cx+tcr.r).toInt; y <-round(tcr.cy-tcr.r).toInt until round(tcr.cy+tcr.r).toInt) yield {
-			val p = ip.get(x,y)
-			p*dist(x,y,tcr.cx,tcr.cy)
-		}).toArray.sum / pixelsum / radius
-		val distvar = (for(x <-round(tcr.cx-tcr.r).toInt until round(tcr.cx+tcr.r).toInt; y <-round(tcr.cy-tcr.r).toInt until round(tcr.cy+tcr.r).toInt) yield {
-			val p = ip.get(x,y)
-			p*pow((dist(x,y,tcr.cx,tcr.cy)-distmean),2)
-		}).toArray.sum / pixelsum / radius
 
-		Map("pixelSum"->pixelsum,"entropy"->entropy,
-			"entropyPerPixel"->entropy/(width*height), "distMean"->distmean, "distVariance"->distvar)
+}
+
+/**
+ * Calculate metrics from radial profile.
+ * Radial profile is calculated by CellImageAnalyzer
+ */
+object RadialProfileAnalyzer{
+	def inner_product(a: Array[Double],b: Array[Double]): Double = a.zip(b).map(x=>x._1*x._2).sum
+	def normalize(arr: Array[Double]) = {
+		val s = arr.sum
+		arr.map(_/s)
 	}
-	*/
+	//Radial proifile metrics
 	def centerofmass(data: Array[Double]): Double = {
 		val prob = normalize(data)
 		val len = data.length
 		val dist = (for(i <- 1 to len) yield ((1.0/len*i)-0.5/len)).toArray
 		inner_product(prob,dist)
 	}
-	def variance(data: Option[Array[Double]]): Double = {
-		data match {
-			case Some(arr) => variance(arr)
-			case None => Double.NaN
-		}
-	}
+
 	def variance(data: Array[Double]): Double = {
 		val len = data.length
 		val dist = (for(i <- 1 to len) yield ((1.0/len*i)-0.5/len)).toArray
@@ -205,17 +282,16 @@ object RadialProfileAnalyzer{
 		val ret = inner_product(prob,dev2)
 		ret
 	}
-	def skewness(data: Option[Array[Double]]): Double = {
-		data match {
-			case Some(arr) => skewness(arr)
-			case None => Double.NaN
-		}
-	}
-	def gini(data: Option[Array[Double]]): Double = {
-		data match {
-			case Some(arr) => gini(arr)
-			case None => Double.NaN
-		}
+	def skewness(data: Array[Double]): Double = {
+		val len = data.length
+		val dist = (for(i <- 1 to len) yield ((1.0/len*i)-0.5/len)).toArray
+		val prob = normalize(data)
+		val m = inner_product(prob,dist)
+		val dev = dist.map(_-m)
+		val dev2 = dev.map(pow(_,2))
+		val dev3 = dev.map(pow(_,3))
+		val ret = inner_product(prob,dev3) / pow(inner_product(prob, dev2),1.5)
+		ret
 	}
 	def gini(data: Array[Double]): Double = {
 		try{
@@ -235,31 +311,8 @@ object RadialProfileAnalyzer{
 				return Double.NaN
 		}
 	}
-	def normalize(arr: Array[Double]) = {
-		val s = arr.sum
-		arr.map(_/s)
-	}
-	def inner_product(a: Array[Double],b: Array[Double]): Double = a.zip(b).map(x=>x._1*x._2).sum
-	def skewness(data: Array[Double]): Double = {
-		val len = data.length
-		val dist = (for(i <- 1 to len) yield ((1.0/len*i)-0.5/len)).toArray
-		val prob = normalize(data)
-		val m = inner_product(prob,dist)
-		val dev = dist.map(_-m)
-		val dev2 = dev.map(pow(_,2))
-		val dev3 = dev.map(pow(_,3))
-		val ret = inner_product(prob,dev3) / pow(inner_product(prob, dev2),1.5)
-		ret
-	}
-	/*	def old_skewness(data: Array[Double]): Double = {
-		//Incorrect!!
-		def mean(arr: Array[Double]) = arr.sum/arr.length
-		val i = 0
-		val dev = data.map(_-mean(data))
-		mean(dev.map(pow(_,3)))/pow(mean(dev.map(pow(_,2))),1.5)
-	}*/
-}
 
+}
 object ImgUtils{
 	def getAdjustedImage(ip: ImageProcessor): BufferedImage = {
 		val stat = ip.getStatistics
