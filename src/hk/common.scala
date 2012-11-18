@@ -42,11 +42,6 @@ case class Circle(cx: Float, cy: Float, r: Float){
 }
 
 class Con4[A](var bf: A = null, var ricm: A = null, var tcr: A = null, var icam: A = null) extends Iterable[A]{
-/*	override def foreach[U](f: A => U): Unit = {
-	   f(bf); f(ricm);f(tcr);f(icam)
-	}
-*/
-
   def iterator: Iterator[A] = new Iterator[A]{
     var index = -1
     def next(): A = {

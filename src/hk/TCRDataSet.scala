@@ -14,17 +14,17 @@ import scala.collection.mutable.HashMap
 object CellDataSet {
   def newDataSet(m: Path,imageLoad: Boolean = true): CellDataSet = {
     def nameCheck(m:Path) = Array("metrics.txt","metrics_mod.txt","celldata.xml").contains(m.name)
-    if(!nameCheck(m)){
-      println(m)
-      throw new Exception("CellDataSet.newDataSet: metrics file name invalid.")
-    }
-    val ds = new CellDataSet
-	if(imageLoad)
-	    ds._img = ImageManager.createImageManager(m,Config.imgType)
-    ds.readMetricsFromFolder(m.parent)
-    ds
+	  if(!nameCheck(m)){
+		  println(m)
+		  throw new Exception("CellDataSet.newDataSet: metrics file name invalid.")
+	  }
+	  val ds = new CellDataSet
+	  if(imageLoad)
+		  ds._img = ImageManager.createImageManager(m,Config.imgType).getOrElse(null)
+	  ds.readMetricsFromFolder(m.parent)
+	  ds
   }
-  def createEmptyDataset: CellDataSet = {
+	def createEmptyDataset: CellDataSet = {
     new CellDataSet
   }
 }
@@ -35,7 +35,7 @@ class CellDataSet {
   def img: ImageManager = if(_img != null) {
 	  _img
   } else {
-	  _img = ImageManager.createImageManager(metricsFile,Config.imgType)
+	  _img = ImageManager.createImageManager(metricsFile,Config.imgType).getOrElse(null)
 	  _img
   }
 
@@ -135,7 +135,7 @@ class CellDataSet {
 		metricsFile = m
 		observers.foreach(_.cellRemoved(cells.toArray))
 		_cells.clear()
-	  	println("Loading: "+ metricsFile)
+	  println("Loading: "+ metricsFile)
 		for(line <- Source.fromFile(m.file).getLines){
 	   		val token = line.split("\t")
 	    		val bfCenter = new Point2f(token(6).toFloat,token(7).toFloat)
@@ -149,7 +149,7 @@ class CellDataSet {
 	    		calcCellMetrics(cell)
 	    		_cells += cell
 		}
-//		println("%d cells were loaded from %s".format(cells.length,m.name))
+//		println("%d cells were loaded from %s".format(cells.length,metricsFile.name))
 		observers.foreach(_.cellAdded(cells.toArray))
 	}
 /*	def writeRP() {

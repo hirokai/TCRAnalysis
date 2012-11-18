@@ -208,16 +208,16 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 		gbc.gridheight = 1
 		leftPanel.add(cbAutoSave, gbc)
 
-		val btTest = new JButton("Test")
-		btTest.addActionListener(new ActionListener() {
+		val btBatch = new JButton("Batch")
+		btBatch.addActionListener(new ActionListener() {
 			def actionPerformed(e: ActionEvent) {testAlgorithm()}
 		})
-		btTest.setSize(new Dimension(100, 50))
+		btBatch.setSize(new Dimension(100, 50))
 		gbc.gridx = 0
 		gbc.gridy = 4
 		gbc.gridwidth = 3
 		gbc.gridheight = 1
-		leftPanel.add(btTest, gbc)
+		leftPanel.add(btBatch, gbc)
 
 		tfParam = new JTextField
 		tfParam.setSize(new Dimension(100, 50))
@@ -481,12 +481,15 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 	}
 
 	def testAlgorithm() {
+		val text = tfParam.getText
+		NewBatchAnalysis.run(null)
 		if (selectedCellIndex == -1)
 			return
 		val cell = dataSet.cells(selectedCellIndex)
 		val newip = dataSet.getImageOfCell(cell, "TCR")
 		try {
-			TestAnalysis3.run(newip, tfParam.getText)
+
+			// TestAnalysis3.run(newip, tfParam.getText)
 		} catch {
 			case e: Exception => IJ.error(e.getClass.getName, e.getMessage)
 			e.printStackTrace()

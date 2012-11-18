@@ -9,95 +9,9 @@ import TcrAlgorithm._
  * ToDo: ImageProcessor holds value as Float, so conversion between double and float is cumbersome.
  */
 
-
-/*
-/**
- * Base trait for metrics functions
- *
- */
-trait MetricFunction {
-	import CellImageAnalyzer.inner_product
-	val name: String
-	val longName: String
-
-	/**
-	 * Before calling this, some functions such as
-	 * addPixel (for MetricFunctionFromImage; for all pixels to consider)
-	 * or setRadialProfile(for MetricFunctionFromRadialProfile) has to be called.
-	 * @return metric value
-	 */
-	def value: Option[Float] = None
-}
-
-/**
- * Metric that can be calculated from image.
- */
-trait MetricFunctionFromImage extends MetricFunction {
-	def addPixel(x:Int,y:Int,v:Float,bg: Float): Unit
-}
-
-/**
- * Metric based on radial profile.
- */
-trait MetricFunctionFromRadialProfile extends MetricFunction {
-	def valueFromRadialProfile(radial: Array[Double]): Float
-}
-
-object MinIntensity extends MetricFunction{
-	val name = "minIntensity"
-	val longName = "Minimum intensity"
-	def addPixel(x:Int,y:Int,v:Float,bg:Float) {
-		minVal = min(v,minVal)
-	}
-	def value = Some(minVal)  // Stub
-
-	var minVal = 0f
-}
-
-object TotalIntensity extends MetricFunction{
-	val name = "pixelSum"
-	val longName = "Total intensity"
-	def addPixel(x:Int,y:Int,v:Float,bg:Float) {
-		sum += v
-	}
-	override def value = Some(sum)  // Stub
-
-	var sum = 0f
-}
-
-object Entropy extends MetricFunction {
-	val name = "entropy"
-	val longName = "Entropy"
-	def addPixel(x:Int,y:Int,v:Float,bg:Float) {
-		sum += v
-	}
-	override def value = Some(sum)
-
-	var sum = 0f
-}
-
-object EntropyPerPixel extends MetricFunction {
-	val name = "entropy"
-	val longName = "Entropy"
-	def addPixel(x:Int,y:Int,v:Float,bg:Float) {
-		sum += v
-	}
-	def value = Some(sum/area)
-
-	var sum = 0f
-}
-
-object Skewness extends MetricFunctionFromRadialProfile {
-	import CellImageAnalyzer.{inner_product,normalize}
-	val name = "radskew"
-	val longName = "Skewness"
-
-}
-
-*/
-
 object CellImageAnalyzer{
-	val emptyMetricsResult = availableMetrics.keys.map(k => {k -> Float.NaN}).toMap
+
+	def dist(ax:Float,ay:Float,bx:Float,by:Float): Float = sqrt(pow(ax-bx,2)+pow(ay-by,2)).toFloat
 	def checkRadius(bf:Circle, tcr:Circle,width:Int,height:Int): Boolean = {
 		val xmin = min(bf.cx-bf.r,tcr.cx-tcr.r)
 		val xmax = max(bf.cx+bf.r,tcr.cx+tcr.r)
@@ -105,16 +19,8 @@ object CellImageAnalyzer{
 		val ymax = max(bf.cy+bf.r,tcr.cy+tcr.r)
 		xmin>=0 && xmax < width && ymin >= 0 && ymax < height
 	}
-	/*
-	val metricFunctionsA: Array[MetricFunctionFromImage] =
-		Array(MinIntensity,TotalIntensity,Entropy,EntropyPerPixel,DistMean,DistVar,
-					TotalIntensityBGSub,EntropyBGSub,EntropyPerPixelBGSub,
-					DistMeanBGSub,DistVarBGSub)
-	val metricFunctionsB: Array[MetricFunctionFromRadialProfile] =
-		Array(CenterOfMass,Skewness,CenterOfMassBGSub,SkewnessBGSub,Gini,GiniBGSub)
-//	val availableMetrics: Map[String,String] = (metricFunctionsA++metricFunctionsB).map(f => {f.name -> f.longName}).toMap
-*/
-	val availableMetrics =
+
+	val availableMetrics: Map[String,String] =
 		Map("entropy"->"Entropy","radcom"->"CoM","radskew"->"Skewness",
 			"entropyPerPixel"->"Entropy per pixel", "distMean"->"Mean distance", "distVariance"->"Distance variance",
 			"pixelSumBS"->"Total intensity (BG subtracted)","entropyBS"->"Entropy (BG subtracted)","radcomBS"->"CoM (BG subtracted)",
@@ -122,7 +28,7 @@ object CellImageAnalyzer{
 			"distMeanBS"->"Mean distance (BG subtracted)", "distVarianceBS"->"Distance variance (BG subtracted)",
 			"radgini"->"Gini coefficient", "radginiBS"->"Gini coefficient (BG subtracted)")
 
-
+	val emptyMetricsResult: Map[String,Float] = availableMetrics.keys.map(k => {k -> Float.NaN}).toMap
 	def getRadialProfile(ip: ImageProcessor, bf: Circle, tcr: Circle, num_bins: Int = -1): Option[Array[Double]]  = {
 		val height = ip.getHeight
 		val width = ip.getWidth
@@ -174,12 +80,21 @@ object CellImageAnalyzer{
 			pixelsum += pow(ip.get(x,y)-bg,power).toFloat	}
 		new Point2f(xsum/pixelsum,ysum/pixelsum)
 	}
+
+	// If radial is None, some metrics such as radskew will be NaN,
+	// but some other metrics that are calculated directly from image intensity ("image-based metrics") may still be valid.
+	// checkRadius() determines if metrics can be calculated or not.
+	// Currently, criteria for whether radial profile is valid and whether image-based metrics are valid are the same.
 	def getTcrMetrics(ip: ImageProcessor, bf: Circle, tcr: Circle, radial: Option[Array[Double]]): Map[String,Float]  = {
+
+		//Radius and area
 		val radius:Float = tcr.r
 		val area:Float = (radius*radius*3.14159).toFloat
-		def dist(ax:Float,ay:Float,bx:Float,by:Float): Float = sqrt(pow(ax-bx,2)+pow(ay-by,2)).toFloat
+
 		if(!checkRadius(bf,tcr,ip.getWidth,ip.getHeight))
 			return emptyMetricsResult
+
+		//Calculate minimum intensity and sum of intensity.
 		var minint: Int = ip.get(round(tcr.cx).toInt,round(tcr.cy).toInt)
 		var pixelsum = 0f
 		for(x <-round(tcr.cx-tcr.r) until round(tcr.cx+tcr.r); y <-round(tcr.cy-tcr.r) until round(tcr.cy+tcr.r) if dist(x,y,tcr.cx,tcr.cy)<radius){
@@ -190,10 +105,10 @@ object CellImageAnalyzer{
 		val pixelsumbs = pixelsum - minint*area
 
 		//Metrics based on radial profile
-
+		//Functions are defined in RadialProfileMetrics
 		val (radcom,radcombs,radskew,radskewbs,radvar,radvarbs,radgini,radginibs) = radial match {
 			case Some(r) => {
-				import RadialProfileAnalyzer._
+				import RadialProfileMetrics._
 				(centerofmass(r).toFloat,centerofmass(r.map(v => {(v - minint)})).toFloat,
 				 skewness(r).toFloat,centerofmass(r.map(v => {(v - minint)})).toFloat,
 				 variance(r).toFloat,variance(r.map(_-minint)).toFloat,
@@ -204,11 +119,18 @@ object CellImageAnalyzer{
 			}
 		}
 
+		//
 		//Metrics that are directly calculated from image
+		//
+
 		var entropy = 0f
 		var entropybs = 0f
 		var distmean = 0f
 		var distmeanbs = 0f
+
+		// Calculate entropy and mean distance (distmean) first.
+		// entropybs and distmeanbs are based on background-subtracted image.
+		// Iterate for the area inside the circle defined by tcr.
 		for(x <-round(tcr.cx-tcr.r) until round(tcr.cx+tcr.r); y <-round(tcr.cy-tcr.r) until round(tcr.cy+tcr.r) if dist(x,y,tcr.cx,tcr.cy)<radius){
 			val p = ip.get(x,y)
 			val pb = p - minint
@@ -222,6 +144,7 @@ object CellImageAnalyzer{
 		distmean /= (radius * pixelsum)
 		distmeanbs /= (radius * pixelsumbs)
 
+		//Calculate variance of distance (distvar) using distmean that was calculated above.
 		var distvar = 0f
 		var distvarbs = 0f
 		for(x <-round(tcr.cx-tcr.r) until round(tcr.cx+tcr.r); y <-round(tcr.cy-tcr.r) until round(tcr.cy+tcr.r) if dist(x,y,tcr.cx,tcr.cy)<radius){
@@ -233,6 +156,7 @@ object CellImageAnalyzer{
 		distvar /= pixelsum
 		distvarbs /= pixelsumbs
 
+		//Return all metrics calculated in this function.
 		Map(
 			//Metrics that are calculated directly from image
 			//Intensity
@@ -258,7 +182,7 @@ object CellImageAnalyzer{
  * Calculate metrics from radial profile.
  * Radial profile is calculated by CellImageAnalyzer
  */
-object RadialProfileAnalyzer{
+object RadialProfileMetrics{
 	def inner_product(a: Array[Double],b: Array[Double]): Double = a.zip(b).map(x=>x._1*x._2).sum
 	def normalize(arr: Array[Double]) = {
 		val s = arr.sum

@@ -8,17 +8,27 @@ import ij.process.ImageProcessor
 
 
 object ImageManager{
-  def createImageManager(m: Path, mode: Int) = {
-    val folder: Path = m.parent.parent
-	mode match {
-	case 1 =>
-		new FolderImageManager(folder)
-	case 2 =>
-	  	val subFolder: String = m.parent.name
-		val stkFile = folder.child(subFolder.drop(9) + ".stk")
-		new StackImageManager(stkFile)
+	def createImageManager(m: Path, mode: Int): Option[ImageManager] = {
+		val folder: Path = m.parent.parent
+		mode match {
+			case 1 =>
+				FolderImageManager.fromFolder(folder)
+			case 2 =>
+				val subFolder: String = m.parent.name
+				val stkFile = folder.child(subFolder.drop(9) + ".stk")
+				StackImageManager.fromStackFile(stkFile)
+		}
 	}
-  }
+	def imageExists(m: Path, mode: Int): Boolean = {
+		val im = createImageManager(m,mode)
+		im match {
+			case Some(i) =>
+				i.release()
+				true
+			case None =>
+				false
+		}
+	}
 }
 
 abstract class ImageManager{
@@ -47,12 +57,24 @@ class StackImageManager extends ImageManager {
 	}
 }
 
+object StackImageManager {
+	def fromStackFile(stk: Path): Option[StackImageManager] = {
+		try{
+		  Some(new StackImageManager(stk))
+		}catch{
+			case _ =>
+				None
+		}
+	}
+
+}
+
 class StackFileIncorrectException(t: String) extends Exception(t)
 
 class FolderImageManager extends ImageManager {
 	def identityPath = folder.path
 	var folder: Path = _
-	def this(_folder: Path) = {
+	private def this(_folder: Path) = {
 	  this
 	  folder = _folder
 	  if(!folder.isDir)
@@ -63,5 +85,15 @@ class FolderImageManager extends ImageManager {
 	        (new Opener).openImage(folder.child(fn).path)
 	        }).toArray
 	  _ip = new Con4[ImageProcessor](imps.map(_.getProcessor).toArray)
+	}
+}
+
+object FolderImageManager {
+	def fromFolder(folder: Path): Option[FolderImageManager] = {
+	try{
+			Some(new FolderImageManager(folder))
+		}catch{
+			case _ => None
+		}
 	}
 }

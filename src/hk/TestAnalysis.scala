@@ -215,7 +215,7 @@ object TestAnalysis {
 	
 	def printMat(m: Matrix) {
 	  val dimX = m.length
-	  // val dimY = m(0).length
+	  // val dimY = metricsFile(0).length
 	  for(x<-0 until dimX){
 	    println(m(x).map(_.toString).mkString(" "))
 	  }

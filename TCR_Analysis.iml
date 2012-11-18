@@ -11,6 +11,7 @@
       <configuration>
         <option name="compilerLibraryLevel" value="Global" />
         <option name="compilerLibraryName" value="scala-compiler-2.9.1" />
+        <option name="maximumHeapSize" value="2000" />
       </configuration>
     </facet>
   </component>
