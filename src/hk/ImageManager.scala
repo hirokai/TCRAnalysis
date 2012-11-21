@@ -38,7 +38,9 @@ abstract class ImageManager{
   def width = ip.bf.getWidth
   def height = ip.bf.getHeight
   var imps: Array[ImagePlus] = _
-  def release() {imps.foreach(imp=>imp.flush())}
+  def release() {imps.foreach(imp=>{
+	  imp.close()
+  })}
 }
 
 class StackImageManager extends ImageManager {
@@ -50,7 +52,7 @@ class StackImageManager extends ImageManager {
   	  	val imp = new ImagePlus(stkFile.path)
 		imps = Array(imp)
 		val stack: ImageStack = imp.getStack
-		println("Loading: " + stkFile)
+//		println("Loading: " + stkFile)
 	  	if(stack.getSize!=4)
 	  		throw new StackFileIncorrectException(".stk format is incorrect: "+stkFile.path)
 	  	_ip = new Con4[ImageProcessor](Array(1,2,4,3).map(stack.getProcessor(_)))

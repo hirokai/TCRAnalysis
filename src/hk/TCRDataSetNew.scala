@@ -34,9 +34,12 @@ object CellDataInOneImage {
 		val ds = new CellDataInOneImage
 		//Data set is made only when original image exists.
 		if (ImageManager.imageExists(metricsFile,Config.imgType)){
-			ds.readMetricsFromXmlFile(metricsFile)
-			Some(ds)
+			if(ds.readMetricsFromXmlFile(metricsFile))
+				Some(ds)
+			else
+				None
 		}else{
+			println("No image was found with "+metricsFile.path)
 			None
 		}
 	}
@@ -116,37 +119,55 @@ class CellDataInOneImage {
 			throw new Exception("No metrics file.")
 	}
 
-	def readMetricsFromXmlFile(m:Path) {
+	def readMetricsFromXmlFile(m:Path): Boolean = {
 		observers.foreach(_.cellRemoved(cells.toArray))
 		_cells.clear()
 		metricsFile = m
-		try{
-			val xml = XML.loadFile(m.path)
-			val elems = xml \\ "cell"
-			val cs = elems.map(elem=>{
-				val cell = new Cell
-				var num = (elem \ "boundary").text.split(" ").map(_.toFloat)
-				cell.boundary = Circle(num(0),num(1),num(2))
-				num = (elem \ "tcrcenter").text.split(" ").map(_.toFloat)
-				cell.tcrCenter = new Point2f(num(0),num(1))
-				cell.radialTCR = (elem \ "radialtcr").text match{
-					case "" => None
-					case s => Some(s.split(" ").map(_.toDouble).toArray)
-				}
-				cell.radialICAM = (elem \ "radialicam").text match{
-					case "" => None
-					case s => Some(s.split(" ").map(_.toDouble).toArray)
-				}
-				calcCellMetrics(cell)
-				cell
-			}).toArray
-			cs.foreach(c=>_cells += c)
-			println("%d cells were loaded from celldata.xml" format cells.length)
+
+		val xmlStr: String = try{
+			val s = Source.fromFile(m.path)
+			s.getLines.mkString("\n")
 		}catch{
-			case e: Exception =>
-				println("XML parse error (probably due to an empty file)")
+			case _ =>
+				""
+		}
+		if (!xmlStr.isEmpty){
+			try{
+				loadImage()
+				val xml = XML.loadString(xmlStr)
+				val elems = xml \\ "cell"
+				val cs = elems.map(elem=>{
+					val cell = new Cell
+					var num = (elem \ "boundary").text.split(" ").map(_.toFloat)
+					cell.boundary = Circle(num(0),num(1),num(2))
+					num = (elem \ "tcrcenter").text.split(" ").map(_.toFloat)
+					cell.tcrCenter = new Point2f(num(0),num(1))
+					cell.radialTCR = (elem \ "radialtcr").text match{
+						case "" => None
+						case s => Some(s.split(" ").map(_.toDouble).toArray)
+					}
+					cell.radialICAM = (elem \ "radialicam").text match{
+						case "" => None
+						case s => Some(s.split(" ").map(_.toDouble).toArray)
+					}
+					calcCellMetrics(cell)
+					cell
+				}).toArray
+				cs.foreach(c=>_cells += c)
+				println("%d cells were loaded from celldata.xml" format cells.length)
+			}catch{
+				case e:Exception => {
+					println("XML parse error.: ", e.getCause)
+					releaseImage()
+				}
+				return false
+			}
+		}else{
+			println("No celldata.xml found, or celldata.xml is empty.")
+			return false
 		}
 		observers.foreach(_.cellAdded(cells.toArray))
+		return true
 	}
 
 	def metricsXml: String = {
@@ -291,7 +312,31 @@ class DataForOneFlowcell(env: Environment, x: String, y: String) {
 	}
 	def writeMetricsXml(path: Path) {
 		if (path != null){
+			println("Output: %s %s: nopat %d images, aupat %d images".format(x,y,nopat.length,aupat.length))
 			new PrintWriter(path.file).printf(metricsXml).close()
+		}
+	}
+	def writeMetricsCsv(path: Path) {
+		if (path != null){
+		val numRows = max(nopat.map(_.cells.length).sum,aupat.map(_.cells.length).sum) + 1
+		val keys = CellImageAnalyzer.availableMetrics.keys.toArray.sorted
+			val numKeys = keys.length
+		val numCols = keys.size * 2
+		val vs:Array[Array[String]] = Array.tabulate(numRows,numCols){(r,c) => ""}
+		for(i <- 0 to 0; j <- 0 until numKeys){
+			vs(i)(j*2) = keys(j) + "_no"
+			vs(i)(j*2+1) = keys(j) + "_au"
+		}
+		val nopatCells = nopat.map(_.cells).flatten
+		val aupatCells = aupat.map(_.cells).flatten
+		for (i <- 0 until nopatCells.length ;j<-0 until numKeys){
+			vs(i+1)(j*2) = nopatCells(i).metricsTCR(keys(j)).toString
+		}
+		for (i <- 0 until aupatCells.length ;j<-0 until numKeys){
+			vs(i+1)(j*2+1) = aupatCells(i).metricsTCR(keys(j)).toString
+		}
+		val str = vs.map(_.mkString(",")).mkString("\n")
+		new PrintWriter(path.file).printf(str).close()
 		}
 	}
 	//ToDo: Use some XML writer to avoid indentation inefficiency.
@@ -315,16 +360,22 @@ class DataForOneFlowcell(env: Environment, x: String, y: String) {
 
 object DataForOneFlowcell {
 	def indent(i: Int, str: String): String = str.lines.map("\t"*i + _).mkString("\n")
-	def newFromFolder(folder: Path, env: Environment, x:String,y:String): DataForOneFlowcell = {
+	def newFromFolder(folder: Path, env: Environment, x:String,y:String): Option[DataForOneFlowcell] = {
 		val au: Array[Path] = folder.child("aupat").listFiles("""celldata\.xml$""")
 		val no: Array[Path] = folder.child("nopat").listFiles("""celldata\.xml$""")
 		val data = new DataForOneFlowcell(env,x,y)
-		data.nopat = no.map(CellDataInOneImage.newDataSet(_)).flatten
-		data.aupat = au.map(CellDataInOneImage.newDataSet(_)).flatten
-		data
+		data.nopat = no.map(CellDataInOneImage.newDataSet(_)).collect{case Some(a) => a}
+		data.aupat = au.map(CellDataInOneImage.newDataSet(_)).collect{case Some(a) => a}
+		if(data.nopat.length > 0 && data.aupat.length > 0)
+			Some(data)
+		else
+			None
 	}
 	def mkOutputPath(outfolderBase:Path,x:String,y:String): Path = {
 		new Path(escapePath(outfolderBase.path + File.separator + x + "_" + y + ".xml"))
+	}
+	def mkOutputPathCsv(outfolderBase:Path,x:String,y:String): Path = {
+		new Path(escapePath(outfolderBase.path + File.separator + x + "_" + y + ".csv"))
 	}
 }
 
@@ -417,19 +468,25 @@ class AllDataMatrix(configFile: File) {
 		for(x <- dimX.indices; y <- dimY.indices){
 			folder(x)(y) match {
 					case Some(f) => {
-						data(x)(y) = Some(DataForOneFlowcell.newFromFolder(f,environment,dimX(x),dimY(y)))
+						data(x)(y) = DataForOneFlowcell.newFromFolder(f,environment,dimX(x),dimY(y))
 					}
 					case None =>
 						data(x)(y) = None
 			}
 		}
 	}
-	def recalcAndSaveAllDataSet {
+	def recalcAndSaveAndCloseAllDataSet {
 		for(x <- dimX.indices; y <- dimY.indices){
 			folder(x)(y) match {
 				case Some(f) => {
-					data(x)(y) = Some(DataForOneFlowcell.newFromFolder(f,environment,dimX(x),dimY(y)))
-					data(x)(y).map(_.writeMetricsXml(DataForOneFlowcell.mkOutputPath(environment.outfolder,dimX(x),dimY(y))))
+					data(x)(y) = DataForOneFlowcell.newFromFolder(f,environment,dimX(x),dimY(y))
+					data(x)(y) match {
+						case Some(d) => {
+							d.writeMetricsXml(DataForOneFlowcell.mkOutputPath(environment.outfolder,dimX(x),dimY(y)))
+							d.writeMetricsCsv(DataForOneFlowcell.mkOutputPathCsv(environment.outfolder,dimX(x),dimY(y)))
+						}
+					}
+					data(x)(y) = None   //To release memory.
 				}
 				case None =>
 					data(x)(y) = None

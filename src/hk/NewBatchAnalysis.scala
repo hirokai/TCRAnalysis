@@ -12,6 +12,6 @@ import javax.swing.JFrame
 object NewBatchAnalysis {
 	def run(parent: JFrame) {
 		val data = new AllDataMatrix(null) //ToDo: pass a config file
-		data.recalcAndSaveAllDataSet
+		data.recalcAndSaveAndCloseAllDataSet
 	}
 }

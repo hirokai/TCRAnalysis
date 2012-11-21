@@ -26,7 +26,13 @@ object CellImageAnalyzer{
 			"pixelSumBS"->"Total intensity (BG subtracted)","entropyBS"->"Entropy (BG subtracted)","radcomBS"->"CoM (BG subtracted)",
 			"radskewBS"->"Skewness (BG subtracted)","entropyPerPixelBS"->"Entropy per pixel (BG subtracted)",
 			"distMeanBS"->"Mean distance (BG subtracted)", "distVarianceBS"->"Distance variance (BG subtracted)",
-			"radgini"->"Gini coefficient", "radginiBS"->"Gini coefficient (BG subtracted)")
+			"radgini"->"Gini coefficient", "radginiBS"->"Gini coefficient (BG subtracted)",
+		//Following was added on Nov 2012
+		  "radvarMirror" -> "Variance of centrosymmetric radial profile",
+			"radvarMirrorBS" -> "Variance of centrosymmetric radial profile (BG subtracted)",
+			"variance" -> "Variance of 2D image",  //See a keynote slide or something for more detailed explanation.
+			"varianceBS" -> "Variance of 2D image (BG subtracted)"
+		)
 
 	val emptyMetricsResult: Map[String,Float] = availableMetrics.keys.map(k => {k -> Float.NaN}).toMap
 	def getRadialProfile(ip: ImageProcessor, bf: Circle, tcr: Circle, num_bins: Int = -1): Option[Array[Double]]  = {
@@ -106,16 +112,21 @@ object CellImageAnalyzer{
 
 		//Metrics based on radial profile
 		//Functions are defined in RadialProfileMetrics
-		val (radcom,radcombs,radskew,radskewbs,radvar,radvarbs,radgini,radginibs) = radial match {
+		val (radcom,radcombs,radskew,radskewbs,radvar,radvarbs,radgini,radginibs,radvarMirror,radvarMirrorbs):
+					(Float,Float,Float,Float,Float,Float,Float,Float,Float,Float) =
+			radial match {
 			case Some(r) => {
 				import RadialProfileMetrics._
-				(centerofmass(r).toFloat,centerofmass(r.map(v => {(v - minint)})).toFloat,
-				 skewness(r).toFloat,centerofmass(r.map(v => {(v - minint)})).toFloat,
-				 variance(r).toFloat,variance(r.map(_-minint)).toFloat,
-				 gini(r).toFloat, gini(r.map(_-minint)).toFloat)
+				val r_bs = r.map(v => {(v - minint)})
+				(centerofmass(r).toFloat,centerofmass(r_bs).toFloat,
+				 skewness(r).toFloat,centerofmass(r_bs).toFloat,
+				 variance(r).toFloat,variance(r_bs).toFloat,
+				 gini(r).toFloat, gini(r_bs).toFloat,
+				 variance(mirror(r),-1,1).toFloat,variance(mirror(r_bs),-1,1).toFloat
+				)
 			}
 			case None => {
-				(Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN)
+				(Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN, Float.NaN)
 			}
 		}
 
@@ -127,34 +138,59 @@ object CellImageAnalyzer{
 		var entropybs = 0f
 		var distmean = 0f
 		var distmeanbs = 0f
+		var mean_r = 0f
 
 		// Calculate entropy and mean distance (distmean) first.
 		// entropybs and distmeanbs are based on background-subtracted image.
 		// Iterate for the area inside the circle defined by tcr.
 		for(x <-round(tcr.cx-tcr.r) until round(tcr.cx+tcr.r); y <-round(tcr.cy-tcr.r) until round(tcr.cy+tcr.r) if dist(x,y,tcr.cx,tcr.cy)<radius){
-			val p = ip.get(x,y)
+			val p: Int = ip.get(x,y)
 			val pb = p - minint
-			val pn = p / pixelsum
+			val pn: Float = p / pixelsum   //Pixel intensity normalized so that the sum inside the circle is 1
 			val pbn = pb / pixelsumbs
+			val r: Float = dist(x,y,tcr.cx,tcr.cy).toFloat
+			val r_signed: Float = r * (signum(x-tcr.cx) match {
+				case 1 => 1
+				case -1 => -1
+				case 0 => (-1) * signum(y-tcr.cy)
+			})
+
+			//Use p instead of pn if possible, in order to avoid calculation error.
+			//Int should not overflow unless image region is huge.
 			entropy += (if(pn>0) -pn * log(pn) else 0).toFloat
 			entropybs += (if(pbn>0) -pbn * log(pbn) else 0).toFloat
-			distmean += p*dist(x,y,tcr.cx,tcr.cy).toFloat
-			distmeanbs += pb*dist(x,y,tcr.cx,tcr.cy).toFloat
+			distmean += p*r
+			distmeanbs += pb*r
+			mean_r += p * r_signed
 		}
+		//Here all of these three are normalized to [0,1]
 		distmean /= (radius * pixelsum)
 		distmeanbs /= (radius * pixelsumbs)
+		mean_r /= (radius * pixelsum)
 
 		//Calculate variance of distance (distvar) using distmean that was calculated above.
 		var distvar = 0f
 		var distvarbs = 0f
+		var rvariance = 0f
+		var rvariancebs = 0f
 		for(x <-round(tcr.cx-tcr.r) until round(tcr.cx+tcr.r); y <-round(tcr.cy-tcr.r) until round(tcr.cy+tcr.r) if dist(x,y,tcr.cx,tcr.cy)<radius){
 			val p = ip.get(x,y)
 			val pb = p - minint
-			distvar += p*pow((dist(x,y,tcr.cx,tcr.cy)/radius-distmean),2).toFloat
-			distvarbs += pb*pow((dist(x,y,tcr.cx,tcr.cy)/radius-distmeanbs),2).toFloat
+			val r: Float = dist(x,y,tcr.cx,tcr.cy).toFloat
+			distvar += p*pow((r/radius-distmean),2).toFloat
+			distvarbs += pb*pow((r/radius-distmeanbs),2).toFloat
+			val r_signed: Float = r * (signum(x-tcr.cx) match {
+				case 1 => 1
+				case -1 => -1
+				case 0 => (-1) * signum(y-tcr.cy)
+			})
+			rvariance += pow(r_signed-mean_r,2).toFloat*p
+			rvariancebs += pow(r_signed-mean_r,2).toFloat*pb
 		}
 		distvar /= pixelsum
 		distvarbs /= pixelsumbs
+		rvariance /= radius * pixelsum
+		rvariancebs /= radius * pixelsumbs
 
 		//Return all metrics calculated in this function.
 		Map(
@@ -167,11 +203,13 @@ object CellImageAnalyzer{
 			"distMean"->distmean, "distMeanBS"->distmeanbs,
 			//Variance of distance from center
 			"distVariance"->distvar, "distVarianceBS"->distvarbs,
+			"variance" -> rvariance,"varianceBS" -> rvariancebs,
 
 			//Metrics from radial profile
 			"radcom"->radcom,"radskew"->radskew,"radvar"->radvar,
 			"radcomBS"->radcombs,"radskewBS"->radskewbs,"radvarBS"->radvarbs,
-			"radgini"->radgini, "radginiBS"->radginibs
+			"radgini"->radgini, "radginiBS"->radginibs,
+			"radvarMirror" -> radvarMirror, "radvarMirrorBS" -> radvarMirrorbs
 		)
 	}
 
@@ -196,9 +234,10 @@ object RadialProfileMetrics{
 		inner_product(prob,dist)
 	}
 
-	def variance(data: Array[Double]): Double = {
+	def variance(data: Array[Double],min:Double=0,max:Double=1): Double = {
 		val len = data.length
-		val dist = (for(i <- 1 to len) yield ((1.0/len*i)-0.5/len)).toArray
+		val interval = (max-min)/len
+		val dist = (0 until len).map(i => {i*interval + interval*0.5}).toArray
 		val prob = normalize(data)
 		val m = inner_product(prob,dist)
 		val dev = dist.map(_-m)
@@ -206,6 +245,9 @@ object RadialProfileMetrics{
 		val ret = inner_product(prob,dev2)
 		ret
 	}
+
+	def mirror(radial: Array[Double]): Array[Double] = radial.reverse ++ radial
+
 	def skewness(data: Array[Double]): Double = {
 		val len = data.length
 		val dist = (for(i <- 1 to len) yield ((1.0/len*i)-0.5/len)).toArray
