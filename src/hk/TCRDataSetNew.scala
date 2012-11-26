@@ -18,6 +18,13 @@ import hk.Path._
  * This will keep the calculated information in a folder that is separated from image data.
  *
  */
+
+object BatchConfig {
+	val baseFolder: String = "/Users/hiroyuki/Dropbox/Groves Lab Data/Scope Pics/TCR nanodot all fixed image data set used in the paper"
+}
+
+
+
 object CellDataInOneImage {
 	/**
 	 * This no longer supports .txt input. Only celldata.xml is allowed.
@@ -382,12 +389,12 @@ object DataForOneFlowcell {
 /**
  * 2D matrix structure that is made by folder-based image organization.
  * This holds a 2D array of SuperCellDataSet as a substructure.
+ * Data set and 2 axes are defined in two .tsv files.
  */
-//ToDo: Read a config file
 class AllDataMatrix(configFile: File) {
 	import AllDataMatrix._
 
-	val baseFolder = "/Users/hiroyuki/Dropbox/Groves Lab Data/Scope Pics/TCR nanodot all fixed image data set used in the paper";
+	val baseFolder = BatchConfig.baseFolder
 	var dimX: Array[String] = Array()    // Nanodot Spacing
 	var dimY: Array[String] = Array()    // Agonist/null ratio
 	var folder: Array[Array[Option[Path]]] = Array.tabulate(5){_=>Array.tabulate(7){_=>None}}
@@ -396,41 +403,27 @@ class AllDataMatrix(configFile: File) {
 	environment.outfolder = new Path(baseFolder + File.separator + "121117 metrics recalculated")
 
 	var data: Array[Array[Option[DataForOneFlowcell]]] = Array.tabulate(5){_=>Array.tabulate(7){_=>None}}
-	dimX = Array("40","81","120","145","171")
-	dimY = Array("1:0","1:1","1:5","1:10","1:20","1:50","1:100")
 	folder = Array.tabulate(5){_=>Array.tabulate(7){_=>None}}
-	val datstr =
-		"""
-81	1:0	20110806_npat/FC01_81nm_1--0_ag--null
-81 1:1 20110806_npat/FC02_81nm_1--1_ag--null
-81	1:10	20110806_npat/FC04_81nm_1--10_ag--null
-120	1:0	20110806_npat/FC05_120nm_1--0_ag--null
-120	1:1	20110806_npat/FC06_120nm_1--1_ag--null
-120	1:5	20110806_npat/FC07_120nm_1--5_ag--null
-120	1:10	20110806_npat/FC08_120nm_1--10_ag--null
-145	1:0	20110806_npat/FC09_145nm_1--0_ag--null
-145	1:1	20110806_npat/FC10_145nm_1--1_ag--null
-145	1:5	20110806_npat/FC11_145nm_1--5_ag--null
-81	1:5	20110812_npat_redos/81nm_1--5_ag--null
-81	1:20	20110812_npat_redos/81nm_1--20_ag--null
-171	1:0	20110812_npat_redos/171nm_1--0_ag--null
-171	1:1	20110812_npat_redos/171nm_1--1_ag--null
-40	1:0	20111212_npat/FC01_40nm_1--0_ag--null
-40	1:1	20111212_npat/FC02_40nm_1--1_ag--null
-40	1:5	20111212_npat/FC03_40nm_1--5_ag--null
-40	1:10	20111213_npat/FC01_40nm_1--10_ag--null
-40	1:20	20111213_npat/FC02_40nm_1--20_ag--null
-40	1:50	20111213_npat/FC03_40nm_1--50_ag--null
-40	1:100	20111213_npat/FC04_40nm_1--100_ag--null
-			""".stripMargin
-	datstr.lines.foreach(line=>{
-		val vs = line.split("\t")
-		if(vs.length == 3) {
-			val xi = dimX.indexOf(vs(0))
-			val yi = dimY.indexOf(vs(1))
-			folder(xi)(yi) = Some(new Path(baseFolder + File.separator + vs(2)))
-		}
-	})
+	try{
+		//Read two dimensions
+		val dimsStr = Source.fromFile("dimensions.tsv").getLines().toArray
+		dimX = dimsStr(0).split("\t")
+		dimY = dimsStr(1).split("\t")
+
+		//Read data set
+		//dataset.tsv file has three columns (x axis name, y axis name, data folder) in each row.
+		Source.fromFile(baseFolder+"dataset.tsv").getLines.map(_.stripMargin).foreach(line=>{
+			val vs = line.split("\t")
+			if(vs.length == 3) {
+				val xi = dimX.indexOf(vs(0))
+				val yi = dimY.indexOf(vs(1))
+				folder(xi)(yi) = Some(new Path(baseFolder + File.separator + vs(2)))
+			}
+		})
+	}catch{
+		case e:Exception => println("Error while reading dimensions.tsv and dataset.tsv: "+e.getMessage)
+	}
+
 	def mkString = {
 		var str = new StringBuffer
 		for(col <- folder){
