@@ -6,6 +6,7 @@ import java.awt.event._
 import java.io._
 import ij.io.DirectoryChooser
 import javax.swing._
+import process.AutoThresholder
 import scala.util.Random
 import hk._
 import javax.swing.event._
@@ -40,26 +41,6 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 	var dataFolder: DataFolder = _
 	var dataSet: CellDataSet = _
 
-	//  def currentIndex: Int = p_currentIndex
-
-	/*  def currentIndex_=(v: Int): Unit = {
-	if (v == 0)
-	  p_currentIndex = 0
-	if (metrics == null) return
-	if (currentIndex < 0 || currentIndex >= metrics.length) return
-	p_currentIndex = v
-	if (currentIndex == 0) {
-	  btPrev.setEnabled(false)
-	  btNext.setEnabled(true)
-	} else if (currentIndex == metrics.length - 1) {
-	  btPrev.setEnabled(true)
-	  btNext.setEnabled(false)
-	} else {
-	  btPrev.setEnabled(true)
-	  btNext.setEnabled(true)
-	}
-  }
-*/
 	var btFolder: JButton = _
 	var btStack: JButton = _
 	var btAuto: JButton = _
@@ -215,9 +196,20 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 		btBatch.setSize(new Dimension(100, 50))
 		gbc.gridx = 0
 		gbc.gridy = 4
-		gbc.gridwidth = 3
+		gbc.gridwidth = 1
 		gbc.gridheight = 1
 		leftPanel.add(btBatch, gbc)
+
+		val btShowcase = new JButton("Showcase")
+		btShowcase.addActionListener(new ActionListener() {
+			def actionPerformed(e: ActionEvent) {showcaseMetrics()}
+		})
+		btShowcase.setSize(new Dimension(100, 50))
+		gbc.gridx = 1
+		gbc.gridy = 4
+		gbc.gridwidth = 2
+		gbc.gridheight = 1
+		leftPanel.add(btShowcase, gbc)
 
 		tfParam = new JTextField
 		tfParam.setSize(new Dimension(100, 50))
@@ -538,18 +530,22 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 			def actionPerformed(e: ActionEvent) {
 				val size = tfSize.getText.toInt
 				val ipBf = dataSet.getImageOfCell(cell, "BF", size)
+				ipBf.resetMinAndMax()
 				val f4 = new ImageWindow(new ImagePlus("BF", ipBf))
 				f4.setLocation(400, 200)
 				f4.setVisible(true)
 				val ipRicm = dataSet.getImageOfCell(cell, "RICM", size)
+				ipRicm.resetMinAndMax()
 				val f3 = new ImageWindow(new ImagePlus("RICM", ipRicm))
 				f3.setLocation(400 + size + 10, 200)
 				f3.setVisible(true)
 				val ipTcr = dataSet.getImageOfCell(cell, "TCR", size)
+				ipTcr.resetMinAndMax()
 				val f1 = new ImageWindow(new ImagePlus("TCR", ipTcr))
 				f1.setLocation(400, 200 + size + 30)
 				f1.setVisible(true)
 				val ipIcam = dataSet.getImageOfCell(cell, "ICAM", size)
+				ipIcam.resetMinAndMax()
 				val f2 = new ImageWindow(new ImagePlus("ICAM", ipIcam))
 				f2.setLocation(400 + size + 10, 200 + size + 30)
 				f2.setVisible(true)
@@ -587,6 +583,10 @@ class TCR_Analysis(t: String) extends PlugInFrame(t) with CellDataObserver {
 			a(i) = a(j)
 			a(j) = temp
 		}
+	}
+
+	def showcaseMetrics(){
+		(new ShowcaseMetrics).run(null)
 	}
 }
 

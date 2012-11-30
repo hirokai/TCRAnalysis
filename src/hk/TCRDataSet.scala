@@ -33,6 +33,7 @@ class CellDataSet {
   var metricsFile: Path = _
   private var _img: ImageManager = _
   def img: ImageManager = if(_img != null) {
+	  //ToDo: This part may have a bug. I should rather load/release images explicitly.
 	  _img
   } else {
 	  _img = ImageManager.createImageManager(metricsFile,Config.imgType).getOrElse(null)
@@ -100,7 +101,7 @@ class CellDataSet {
 	 
 	def readMetricsFromXmlFile(m:Path) {
 	  observers.foreach(_.cellRemoved(cells.toArray))
-	  _cells.clear()
+	  _cells.clear( )
 	  metricsFile = m
 	  try{
 	  val xml = XML.loadFile(m.path)

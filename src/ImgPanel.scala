@@ -56,8 +56,9 @@ class ImgPanel extends JPanel with MouseListener {
 	def dataChanged(df: DataFolder, ds: CellDataSet): Unit = {
 		println("ImgPanel.dataChanged()")
 		if(dataSet!=null)
-			dataSet.img.release
+			dataSet.img.release()
 		dataSet = ds
+		dataSet.img.loadImages()
 		dataFolder = df
 		if (df != null && ds != null)
 			active = true
@@ -74,7 +75,11 @@ class ImgPanel extends JPanel with MouseListener {
 			titleStr = "(#%d/%d) %s%s".format(df.currentIndex + 1, df.fileCount, ds.img.identityPath, doneStr)
 		parentFrame.setTitle(titleStr)
 		ip = ds.img.ip
-		im = new Con4[Image](ip.map(ImgUtils.getAdjustedImage(_)).toArray)
+		im = new Con4[Image](ip.map(im =>{
+			im.resetMinAndMax()
+//			im.getBufferedImage
+			ImgUtils.getAdjustedImage(im)
+		}).toArray)
 		original.width = ip.bf.getWidth
 		original.height = ip.bf.getHeight
 		this.repaint()

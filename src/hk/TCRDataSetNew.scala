@@ -126,7 +126,7 @@ class CellDataInOneImage {
 			throw new Exception("No metrics file.")
 	}
 
-	def readMetricsFromXmlFile(m:Path): Boolean = {
+	def readMetricsFromXmlFile(m:Path,recalc:Boolean=true): Boolean = {
 		observers.foreach(_.cellRemoved(cells.toArray))
 		_cells.clear()
 		metricsFile = m
@@ -157,6 +157,8 @@ class CellDataInOneImage {
 						case "" => None
 						case s => Some(s.split(" ").map(_.toDouble).toArray)
 					}
+					//Recalc all metrics every time no matter what metrics are calculated already.
+					//This function reuses the coordinate information.
 					calcCellMetrics(cell)
 					cell
 				}).toArray
@@ -255,6 +257,15 @@ class CellDataInOneImage {
 
 
 	}
+
+	/**
+	 *
+	 * @param cell
+	 * @param plane BF, RICM, TCR, or ICAM
+	 * @param fixedSize if this is not zero, width and height of output image will be this value.
+	 * @param margin margin added to cell size. Used only when fixedSize = 0.
+	 * @return Some(ImageProcessor). None if params are not valid.
+	 */
 	def getImageOfCell(cell: Cell, plane: String, fixedSize: Int = 0, margin: Int = 0): Option[ImageProcessor] = {
 		img match {
 			case Some(im) => {
@@ -367,7 +378,8 @@ class DataForOneFlowcell(env: Environment, x: String, y: String) {
 
 object DataForOneFlowcell {
 	def indent(i: Int, str: String): String = str.lines.map("\t"*i + _).mkString("\n")
-	def newFromFolder(folder: Path, env: Environment, x:String,y:String): Option[DataForOneFlowcell] = {
+	def newFromFolder(folder: Path, env: Environment,
+	                  x:String,y:String,recalc:Boolean=true): Option[DataForOneFlowcell] = {
 		val au: Array[Path] = folder.child("aupat").listFiles("""celldata\.xml$""")
 		val no: Array[Path] = folder.child("nopat").listFiles("""celldata\.xml$""")
 		val data = new DataForOneFlowcell(env,x,y)
@@ -406,13 +418,13 @@ class AllDataMatrix(configFile: File) {
 	folder = Array.tabulate(5){_=>Array.tabulate(7){_=>None}}
 	try{
 		//Read two dimensions
-		val dimsStr = Source.fromFile("dimensions.tsv").getLines().toArray
+		val dimsStr = Source.fromFile(baseFolder+"/dimensions.tsv").getLines().toArray
 		dimX = dimsStr(0).split("\t")
 		dimY = dimsStr(1).split("\t")
 
 		//Read data set
 		//dataset.tsv file has three columns (x axis name, y axis name, data folder) in each row.
-		Source.fromFile(baseFolder+"dataset.tsv").getLines.map(_.stripMargin).foreach(line=>{
+		Source.fromFile(baseFolder+"/dataset.tsv").getLines.map(_.stripMargin).foreach(line=>{
 			val vs = line.split("\t")
 			if(vs.length == 3) {
 				val xi = dimX.indexOf(vs(0))
@@ -457,11 +469,27 @@ class AllDataMatrix(configFile: File) {
 			None
 	}
 
-	def calcAllDataSet {
+	def getDataForFlowcell(x: String, y: String): Option[DataForOneFlowcell] = {
+		val xi = dimX.indexOf(x)
+		val yi = dimY.indexOf(y)
+		if(xi != -1 && yi != -1) {
+			folder(xi)(yi) match {
+				case Some(f) => {
+					data(xi)(yi) = DataForOneFlowcell.newFromFolder(f,environment,dimX(xi),dimY(yi))
+				}
+				case None =>
+			}
+			data(xi)(yi)
+		}else{
+			None
+		}
+	}
+
+	def calcAllDataSet(recalc: Boolean = true) {
 		for(x <- dimX.indices; y <- dimY.indices){
 			folder(x)(y) match {
 					case Some(f) => {
-						data(x)(y) = DataForOneFlowcell.newFromFolder(f,environment,dimX(x),dimY(y))
+						data(x)(y) = DataForOneFlowcell.newFromFolder(f,environment,dimX(x),dimY(y),recalc)
 					}
 					case None =>
 						data(x)(y) = None

@@ -20,6 +20,32 @@ object CellImageAnalyzer{
 		xmin>=0 && xmax < width && ymin >= 0 && ymax < height
 	}
 
+	def centroid(ip: ImageProcessor, area: Circle, minint: Float = 0f): (Float,Float) = {
+		var sumx = 0f
+		var sumy = 0f
+		var pixelsum = 0f
+		for (x <-round(area.cx-area.r) until round(area.cx+area.r);
+		     y <-round(area.cy-area.r) until round(area.cy+area.r) if dist(x,y,area.cx,area.cy)<area.r) {
+			val p: Float = ip.get(x,y).toFloat - minint
+			sumx += p * x
+			sumy += p * y
+			pixelsum += p
+		}
+		(sumx/pixelsum,sumy/pixelsum)
+	}
+
+	//This assumes that image is not normalized.
+	//No normalization will be done.
+	def centralMoment(ip: ImageProcessor, area: Circle, cx: Float, cy: Float, minint: Float = 0f)(r: Int, s: Int): Float = {
+		var sum = 0f
+		for (x <-round(area.cx-area.r) until round(area.cx+area.r);
+		     y <-round(area.cy-area.r) until round(area.cy+area.r) if dist(x,y,area.cx,area.cy)<area.r) {
+			val p = ip.get(x,y) - minint
+			sum += pow(x-cx,r).toFloat * pow(y-cy,s).toFloat * p.toFloat
+		}
+		sum
+	}
+
 	val availableMetrics: Map[String,String] =
 		Map("entropy"->"Entropy","radcom"->"CoM","radskew"->"Skewness",
 			"entropyPerPixel"->"Entropy per pixel", "distMean"->"Mean distance", "distVariance"->"Distance variance",
@@ -31,8 +57,14 @@ object CellImageAnalyzer{
 		  "radvarMirror" -> "Variance of centrosymmetric radial profile",
 			"radvarMirrorBS" -> "Variance of centrosymmetric radial profile (BG subtracted)",
 			"variance" -> "Variance of 2D image",  //See a keynote slide or something for more detailed explanation.
-			"varianceBS" -> "Variance of 2D image (BG subtracted)"
-		)
+			"varianceBS" -> "Variance of 2D image (BG subtracted)",
+			"moment2nd" -> "Invariant 2nd order central moment",
+			"momentx2py2" -> "mu_20 + mu_02",
+		  "momentxy" -> "Moment mu_11",
+			"moment2ndBS" -> "Invariant 2nd order central moment (BG subtracted)",
+			"momentx2py2BS" -> "mu_20 + mu_02 (BG subtracted)",
+			"momentxyBS" -> "Moment mu_11 (BG subtracted)"
+	)
 
 	val emptyMetricsResult: Map[String,Float] = availableMetrics.keys.map(k => {k -> Float.NaN}).toMap
 	def getRadialProfile(ip: ImageProcessor, bf: Circle, tcr: Circle, num_bins: Int = -1): Option[Array[Double]]  = {
@@ -155,7 +187,7 @@ object CellImageAnalyzer{
 				case 0 => (-1) * signum(y-tcr.cy)
 			})
 
-			//Use p instead of pn if possible, in order to avoid calculation error.
+			//Use p instead of pn if possible, in order to avoid error due to addition of small float many times.
 			//Int should not overflow unless image region is huge.
 			entropy += (if(pn>0) -pn * log(pn) else 0).toFloat
 			entropybs += (if(pbn>0) -pbn * log(pbn) else 0).toFloat
@@ -192,6 +224,47 @@ object CellImageAnalyzer{
 		rvariance /= radius * pixelsum
 		rvariancebs /= radius * pixelsumbs
 
+
+		//Added on Nov, 2012.
+		//Caculate some central moments
+		// http://www.isl.titech.ac.jp/~nagahashilab/member/longb/iip/LectureNotes/lecture3.pdf
+		// http://www.tandfonline.com/doi/pdf/10.1080/02664768900000051
+		// http://goo.gl/bQQkE
+		// http://www.sci.utah.edu/~gerig/CS7960-S2010/handouts/CS7960-AdvImProc-MomentInvariants.pdf
+
+
+		//These are separate parts, since calculation is possibly done
+		// in a circle around a manually picked point (bf, from BF image).
+
+		// First, calculate a centroid.
+		val (cx,cy):(Float,Float) = centroid(ip,tcr)
+		// Then, calculate central moments
+		val mu20 = centralMoment(ip,tcr,cx,cy)(2,0)
+		val mu02 = centralMoment(ip,tcr,cx,cy)(0,2)
+		val mu00 = centralMoment(ip,tcr,cx,cy)(0,0)
+
+		//This eta1 is a shape invariant (Remains constant under translation, rotation, similarity transformation)
+		val eta1: Float = (mu20 + mu02) / pow(mu00,2).toFloat
+		val mu20_p_mu02 = mu20 + mu02
+		val mu11 = centralMoment(ip,tcr,cx,cy)(1,1)
+
+		//The same thing but with BG subtraction.
+		val (eta1BS,mu20_p_mu02BS,mu11BS) = {
+			//Use the same minint as before: THIS SHOULD BE CHANGED WHEN USE OTHER AREA THAN tcr
+			val (cx,cy):(Float,Float) = centroid(ip,tcr,minint)
+			// Then, calculate central moments
+			val mu20 = centralMoment(ip,tcr,cx,cy,minint)(2,0)
+			val mu02 = centralMoment(ip,tcr,cx,cy,minint)(0,2)
+			val mu00 = centralMoment(ip,tcr,cx,cy,minint)(0,0)
+
+			//This eta1 is a shape invariant (Remains constant under translation, rotation, similarity transformation)
+			val eta1: Float = (mu20 + mu02) / pow(mu00,2).toFloat
+			val mu20_p_mu02 = mu20 + mu02
+			val mu11 = centralMoment(ip,tcr,cx,cy)(1,1)
+			(eta1,mu20_p_mu02,mu11)
+		}
+
+
 		//Return all metrics calculated in this function.
 		Map(
 			//Metrics that are calculated directly from image
@@ -204,16 +277,15 @@ object CellImageAnalyzer{
 			//Variance of distance from center
 			"distVariance"->distvar, "distVarianceBS"->distvarbs,
 			"variance" -> rvariance,"varianceBS" -> rvariancebs,
-
-			//Metrics from radial profile
+			"moment2nd" -> eta1,"momentx2py2" -> mu20_p_mu02 , "momentxy" -> mu11,
+			"moment2ndBS" -> eta1BS, "momentx2py2BS" -> mu20_p_mu02BS , "momentxyBS" -> mu11BS,
+				//Metrics from radial profile
 			"radcom"->radcom,"radskew"->radskew,"radvar"->radvar,
 			"radcomBS"->radcombs,"radskewBS"->radskewbs,"radvarBS"->radvarbs,
 			"radgini"->radgini, "radginiBS"->radginibs,
 			"radvarMirror" -> radvarMirror, "radvarMirrorBS" -> radvarMirrorbs
 		)
 	}
-
-
 }
 
 /**
@@ -277,16 +349,16 @@ object RadialProfileMetrics{
 				return Double.NaN
 		}
 	}
-
 }
+
 object ImgUtils{
 	def getAdjustedImage(ip: ImageProcessor): BufferedImage = {
 		val stat = ip.getStatistics
 		val hist = stat.histogram
 		val tail = round(0.01f * stat.pixelCount)
 		var count = 0
-		var minhist = -1
-		var maxhist = -1
+		var minhist = -1f
+		var maxhist = -1f
 		for(i <- 0 until 256){
 			count += hist(i)
 			if(count>tail && minhist == -1)
@@ -295,8 +367,8 @@ object ImgUtils{
 				maxhist = i
 		}
 		val range = stat.histMax-stat.histMin
-		val max = round(stat.histMin + maxhist/256*range)
-		val min = round(stat.histMin + minhist/256*range)
+		val max = round(stat.histMin + maxhist/256f*range)
+		val min = round(stat.histMin + minhist/256f*range)
 		ip.setMinAndMax(min,max)
 		ip.getBufferedImage
 	}
