@@ -4,6 +4,8 @@ import scala.math._
 import java.awt.image.BufferedImage
 import ij.process.ImageProcessor
 import TcrAlgorithm._
+import ij.ImagePlus
+import ij.gui.{OvalRoi, Roi}
 
 /**
  * ToDo: ImageProcessor holds value as Float, so conversion between double and float is cumbersome.
@@ -17,7 +19,7 @@ object CellImageAnalyzer{
 		val xmax = max(bf.cx+bf.r,tcr.cx+tcr.r)
 		val ymin = min(bf.cy-bf.r,tcr.cy-tcr.r)
 		val ymax = max(bf.cy+bf.r,tcr.cy+tcr.r)
-		xmin>=0 && xmax < width && ymin >= 0 && ymax < height
+		xmin >= 0 && xmax < width && ymin >= 0 && ymax < height
 	}
 
 	def centroid(ip: ImageProcessor, area: Circle, minint: Float = 0f): (Float,Float) = {
@@ -95,6 +97,14 @@ object CellImageAnalyzer{
 	def calcTcrCenter(ip: ImageProcessor, bf: Circle, algo: TcrAlgorithm):Point2f = {
 		calcTcrCenter(ip,new Point2f(bf.cx,bf.cy),bf.r,algo)
 	}
+
+	def getMinimumIntensityInArea(ip: ImageProcessor, c: Circle): Int = {
+		val imp = new ImagePlus("temp",ip)
+		val roi = new OvalRoi(round(c.cx - c.r), round(c.cy - c.r),round(c.r*2),round(c.r*2))
+		imp.setRoi(roi)
+		imp.getStatistics.min.toInt
+	}
+
 	def calcTcrCenter(ip: ImageProcessor, bf_center: Point2f, radius: Double, algo: TcrAlgorithm):Point2f = {
 		val power = algo match {
 			case TcrAlgorithm.CoM | TcrAlgorithm.CoMsubtractBG => 1
@@ -107,9 +117,7 @@ object CellImageAnalyzer{
 		val bg: Float = algo match {
 			case TcrAlgorithm.CoM | TcrAlgorithm.CoM3 => 0
 			case TcrAlgorithm.CoMsubtractBG | TcrAlgorithm.CoM3subtractBG =>
-				(for(x <- xmin to xmax; y <- ymin to ymax
-				     if pow(cx-x,2) + pow(cy-y,2) <= pow(r,2))
-				yield ip.get(x,y)).min
+				getMinimumIntensityInArea(ip,new Circle(bf_center.x,bf_center.y,radius.toFloat))
 		}
 		var xsum = 0f; var ysum = 0f; var pixelsum = 0f
 		for(x <- xmin to xmax; y <- ymin to ymax
@@ -299,17 +307,24 @@ object RadialProfileMetrics{
 		arr.map(_/s)
 	}
 	//Radial proifile metrics
-	def centerofmass(data: Array[Double]): Double = {
+	def centerofmass(data: Array[Double],min:Double=0,max:Double=1): Double = {
 		val prob = normalize(data)
 		val len = data.length
-		val dist = (for(i <- 1 to len) yield ((1.0/len*i)-0.5/len)).toArray
+		val dist = mkXCoord(len,min,max)
 		inner_product(prob,dist)
+	}
+
+	def mkXCoord(len: Int, min: Double, max: Double): Array[Double] = {
+		require(min < max)
+		require(len > 0)
+		val interval = (max-min)/len
+		val dist = (0 until len).map(i => {i*interval + interval*0.5 + min}).toArray
+		dist
 	}
 
 	def variance(data: Array[Double],min:Double=0,max:Double=1): Double = {
 		val len = data.length
-		val interval = (max-min)/len
-		val dist = (0 until len).map(i => {i*interval + interval*0.5}).toArray
+		val dist = mkXCoord(len,min,max)
 		val prob = normalize(data)
 		val m = inner_product(prob,dist)
 		val dev = dist.map(_-m)
@@ -320,10 +335,9 @@ object RadialProfileMetrics{
 
 	def mirror(radial: Array[Double]): Array[Double] = radial.reverse ++ radial
 
-	def skewness(data: Array[Double]): Double = {
-		val len = data.length
-		val dist = (for(i <- 1 to len) yield ((1.0/len*i)-0.5/len)).toArray
-		val prob = normalize(data)
+	def skewness(radial: Array[Double], min: Double = 0, max: Double = 1): Double = {
+		val dist = mkXCoord(radial.length,min,max)
+		val prob = normalize(radial)
 		val m = inner_product(prob,dist)
 		val dev = dist.map(_-m)
 		val dev2 = dev.map(pow(_,2))

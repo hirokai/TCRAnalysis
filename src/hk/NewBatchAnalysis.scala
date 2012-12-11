@@ -27,7 +27,7 @@ class ShowcaseMetrics {
 		//Data set is fixed right now.
 		matrix.getDataForFlowcell("81","1:0") match {
 			case Some(flowcell) => {
-				//This loads all images in one flowcell, so this should not be used for the entire data set,
+				//This loads all images in one flowcell, so this should not be used for the entire radial set,
 				// which will be too large.
 				val allcells: Array[(Cell,CellDataInOneImage)]
 					= (flowcell.aupat ++ flowcell.nopat).map(a => {

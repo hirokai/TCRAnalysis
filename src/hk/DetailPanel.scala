@@ -101,17 +101,17 @@ class DetailPanel extends JPanel {
 
 	def setPopulationData(d: Array[Array[Double]]) {
 		populationData = d
-		metricsData.removeSeries("population data")
-		metricsData.addSeries("population data", populationData)
+		metricsData.removeSeries("population radial")
+		metricsData.addSeries("population radial", populationData)
 	}
 
 	def setSelectedData(d: Array[Array[Double]]) {
 		selectedData = d
 		println("setSelectedData(): length: %d".format(d.length))
-		metricsData.removeSeries("selected data")
-		metricsData.addSeries("selected data", selectedData)
-		//		val i1 = metricsData.indexOf("population data")
-		val i2 = metricsData.indexOf("selected data")
+		metricsData.removeSeries("selected radial")
+		metricsData.addSeries("selected radial", selectedData)
+		//		val i1 = metricsData.indexOf("population radial")
+		val i2 = metricsData.indexOf("selected radial")
 		//		renderer.setSeriesFillPaint(i1,Color.blue)
 		//		renderer.setSeriesShape(i1,new Ellipse2D.Double(-1,-1,2,2),true)
 		renderer.setSeriesFillPaint(i2, Color.red)
@@ -143,14 +143,14 @@ class DetailPanel extends JPanel {
 				if (selectedIndex != -1) {
 					val c = dataSet.cells(selectedIndex)
 					setSelectedData(Array(Array(c.metricsTCR(ka)), Array(c.metricsTCR(kb))))
-					val i2 = metricsData.indexOf("selected data")
+					val i2 = metricsData.indexOf("selected radial")
 					renderer.setSeriesFillPaint(i2, Color.red)
 					renderer.setSeriesShape(i2, new Ellipse2D.Double(-3, -3, 6, 6), true)
 				}
 				if (dataFolder != null) {
 					val metrics: Array[Array[Double]] = dataFolder.getAllValuesInFolder(Array(ka, kb))
 					setPopulationData(metrics.transpose)
-					val i1 = metricsData.indexOf("population data")
+					val i1 = metricsData.indexOf("population radial")
 					renderer.setSeriesFillPaint(i1, Color.blue)
 					renderer.setSeriesShape(i1, new Ellipse2D.Double(-1, -1, 2, 2), true)
 				}}
