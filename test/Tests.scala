@@ -15,6 +15,10 @@ import org.scalatest.junit.JUnitRunner
 import scala.Some
 import scala.Some
 import hk.Circle
+import java.io.File
+import xml.{Elem, XML}
+import java.net.URL
+import com.sun.deploy.xml.XMLNode
 
 /**
  * Created with IntelliJ IDEA.
@@ -58,11 +62,49 @@ class RadialProfileMetricsTest extends FunSuite with ShouldMatchers {
 	// Also gini coefficient?
 }
 
+//Tests for CellImageAnalyzer
 @RunWith(classOf[JUnitRunner])
 class ImageAnalyzerSpec extends FunSuite with BeforeAndAfter with ShouldMatchers {
 	import CellImageAnalyzer._
 	import ImageAnalyzerSpec._
 	val rand = new MyRandom
+
+	val realCellImgs: Array[(ImagePlus,Circle)] = {
+		val baseFolder = "/Users/hiroyuki/Dropbox/Groves Lab Data/Scope Pics/TCR nanodot all fixed image radial set used in the paper/20111213_npat/FC01_40nm_1--10_ag--null/nopat/"
+		val imgWithXml: Array[(ImagePlus,Elem)] = (1 to 20).map( i => {
+			val path = baseFolder+"%d.stk".format(i)
+			val xmlpath = baseFolder + "analysis_%d/celldata.xml".format(i)
+			if (new File(xmlpath).exists) {
+				val imp = IJ.openImage(path)
+				val xml = XML.load(new URL(xmlpath))
+				Some((imp,xml))
+			}else
+				None
+		}).collect{case Some(a) => a}.toArray
+		imgWithXml.map(a => {
+			val xml = a._2
+			(xml \\ "boundary").map(elem => {
+				val ns = elem.text.split(" ")
+				(a._1, new Circle(ns(0).toFloat,ns(1).toFloat,ns(2).toFloat))
+			})
+		}).flatten
+	}
+
+	val gaussianImgs: Array[(ImagePlus,Circle)] = Array.tabulate(100){ i =>
+		val r: Int = abs(rand.nextInt) % 100 + 50
+		val w: Int = r * 2 + 1
+		val imp = mkGaussianWithNoise(w,w)
+		val circle = new Circle(r,r,r)
+		(imp,circle)
+	}
+
+	val randomNoiseImgs: Array[(ImagePlus,Circle)] = Array.tabulate(100){ i =>
+		val r: Int = abs(rand.nextInt) % 100 + 50
+		val w: Int = r * 2 + 1
+		val imp = mkRandomImg(w,w)
+		val circle = new Circle(r,r,r)
+		(imp,circle)
+	}
 
 	test("dist") {
 		val rand = new Random
@@ -90,15 +132,10 @@ class ImageAnalyzerSpec extends FunSuite with BeforeAndAfter with ShouldMatchers
 			distTuple((x,y),rot360) should be < 0.001f
 		}
 	}
-/*
-	test("centroid rotation") {
-		for (i <- 0 until 100) {
-			val r: Int = abs(rand.nextInt) % 100 + 50
-			val w: Int = r * 2 + 1
-			val imp = mkGaussianWithNoise(w,w)
-			val circle = new Circle(r,r,r)
 
-			val p = (imp,circle)
+	test("centroid rotation") {
+		for (p <- realCellImgs) {
+			val w = p._1.getWidth
 			val p2 = rotateLeft(p)
 			val p3 = rotateLeft(p2)
 			val p4 = rotateLeft(p3)
@@ -118,7 +155,7 @@ class ImageAnalyzerSpec extends FunSuite with BeforeAndAfter with ShouldMatchers
 			distTuple(rotateTuple(c3,w),c4) should be < 0.01f
 			distTuple(rotateTuple(c4,w),c) should be < 0.01f
 		}
-	}*/
+	}
 }
 
 //@RunWith(classOf[JUnitRunner])
@@ -305,8 +342,8 @@ object ImageAnalyzerSpec {
 		val height: Double = rand.doubleInRange(100d,1000d)
 		for(x <- 0 until w) {
 			for(y <- 0 until h) {
-				val v: Double = height * exp((0-pow(x-center._1,2)-pow(y-center._2,2))/(2d*sigma*sigma))
-				val noise: Double = rand.doubleInRange(0d,height/20)
+				val v: Double = height * exp((0f-pow(x-center._1,2)-pow(y-center._2,2))/(2d*sigma*sigma))
+				val noise: Double = 0 //rand.doubleInRange(0d,height/20)
 				ip.set(x,y,round(v+noise).toInt)
 			}
 		}
@@ -335,7 +372,7 @@ object ImageAnalyzerSpec {
 		(new ImagePlus("rotated",ipnew),cnew)
 	}
 
-	def rotateTuple(p: (Float,Float),width: Float): (Float,Float) = (p._2,width - p._1 - 1)
+	def rotateTuple(p: (Float,Float),width: Float): (Float,Float) = (p._2,width - p._1)
 
 	def scale(p: (ImagePlus, Circle), factor: Float): (ImagePlus, Circle) = {
 		val ip = p._1.getProcessor

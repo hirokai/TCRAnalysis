@@ -22,18 +22,14 @@ object CellImageAnalyzer{
 		xmin >= 0 && xmax < width && ymin >= 0 && ymax < height
 	}
 
+	def mkCircleRoi(c: Circle): OvalRoi = new OvalRoi(round(c.cx-c.r),round(c.cy-c.r),round(c.r*2),round(c.r*2))
+
+	//12/11/2012: Changed to use a built-in statistics function.
 	def centroid(ip: ImageProcessor, area: Circle, minint: Float = 0f): (Float,Float) = {
-		var sumx = 0f
-		var sumy = 0f
-		var pixelsum = 0f
-		for (x <-round(area.cx-area.r) until round(area.cx+area.r);
-		     y <-round(area.cy-area.r) until round(area.cy+area.r) if dist(x,y,area.cx,area.cy)<area.r) {
-			val p: Float = ip.get(x,y).toFloat - minint
-			sumx += p * x
-			sumy += p * y
-			pixelsum += p
-		}
-		(sumx/pixelsum,sumy/pixelsum)
+		val roi:Roi = mkCircleRoi(area)
+		ip.setRoi(roi)
+		val stat = ip.getStatistics
+		(stat.xCentroid.toFloat,stat.yCentroid.toFloat)
 	}
 
 	//This assumes that image is not normalized.
@@ -135,7 +131,7 @@ object CellImageAnalyzer{
 
 		//Radius and area
 		val radius:Float = tcr.r
-		val area:Float = (radius*radius*3.14159).toFloat
+		val area:Float = (radius*radius*Pi).toFloat
 
 		if(!checkRadius(bf,tcr,ip.getWidth,ip.getHeight))
 			return emptyMetricsResult
@@ -247,28 +243,30 @@ object CellImageAnalyzer{
 		// First, calculate a centroid.
 		val (cx,cy):(Float,Float) = centroid(ip,tcr)
 		// Then, calculate central moments
-		val mu20 = centralMoment(ip,tcr,cx,cy)(2,0)
-		val mu02 = centralMoment(ip,tcr,cx,cy)(0,2)
-		val mu00 = centralMoment(ip,tcr,cx,cy)(0,0)
+		val central = centralMoment(ip,tcr,cx,cy)_
+		val mu20 = central(2,0)
+		val mu02 = central(0,2)
+		val mu00 = central(0,0)
 
 		//This eta1 is a shape invariant (Remains constant under translation, rotation, similarity transformation)
 		val eta1: Float = (mu20 + mu02) / pow(mu00,2).toFloat
 		val mu20_p_mu02 = mu20 + mu02
-		val mu11 = centralMoment(ip,tcr,cx,cy)(1,1)
+		val mu11 = central(1,1)
 
 		//The same thing but with BG subtraction.
 		val (eta1BS,mu20_p_mu02BS,mu11BS) = {
 			//Use the same minint as before: THIS SHOULD BE CHANGED WHEN USE OTHER AREA THAN tcr
 			val (cx,cy):(Float,Float) = centroid(ip,tcr,minint)
 			// Then, calculate central moments
-			val mu20 = centralMoment(ip,tcr,cx,cy,minint)(2,0)
-			val mu02 = centralMoment(ip,tcr,cx,cy,minint)(0,2)
-			val mu00 = centralMoment(ip,tcr,cx,cy,minint)(0,0)
+			val centralbg = centralMoment(ip,tcr,cx,cy,minint)_
+			val mu20 = centralbg(2,0)
+			val mu02 = centralbg(0,2)
+			val mu00 = centralbg(0,0)
 
 			//This eta1 is a shape invariant (Remains constant under translation, rotation, similarity transformation)
 			val eta1: Float = (mu20 + mu02) / pow(mu00,2).toFloat
 			val mu20_p_mu02 = mu20 + mu02
-			val mu11 = centralMoment(ip,tcr,cx,cy)(1,1)
+			val mu11 = centralbg(1,1)
 			(eta1,mu20_p_mu02,mu11)
 		}
 
@@ -300,6 +298,7 @@ object CellImageAnalyzer{
  * Calculate metrics from radial profile.
  * Radial profile is calculated by CellImageAnalyzer
  */
+//This class has a test suite at test/Tests.scala
 object RadialProfileMetrics{
 	def inner_product(a: Array[Double],b: Array[Double]): Double = a.zip(b).map(x=>x._1*x._2).sum
 	def normalize(arr: Array[Double]) = {
@@ -345,6 +344,8 @@ object RadialProfileMetrics{
 		val ret = inner_product(prob,dev3) / pow(inner_product(prob, dev2),1.5)
 		ret
 	}
+
+	//Does not have a test code yet.
 	def gini(data: Array[Double]): Double = {
 		try{
 			val	len = data.length
