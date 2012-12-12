@@ -160,11 +160,11 @@ class ImageAnalyzerSpec extends FunSuite with BeforeAndAfter with ShouldMatchers
 //			println(c,c2,c3,c4,c5)
 
 			//ToDo: I often see 1.0 distance, this is probably due to a boundary problem (i.e. not a big deal)
-			distTuple(c,c5) should be < 2f
-			distTuple(rotateTuple(c,w),c2) should be < 2f
-			distTuple(rotateTuple(c2,h),c3) should be < 2f
-			distTuple(rotateTuple(c3,w),c4) should be < 2f
-			distTuple(rotateTuple(c4,h),c5) should be < 2f
+			distTuple(c,c5) should be < 1.01f
+			distTuple(rotateTuple(c,w),c2) should be < 1.01f
+			distTuple(rotateTuple(c2,h),c3) should be < 1.01f
+			distTuple(rotateTuple(c3,w),c4) should be < 1.01f
+			distTuple(rotateTuple(c4,h),c5) should be < 1.01f
 //			WindowManager.closeAllWindows()
 		}
 	}
