@@ -107,7 +107,7 @@ class CellDataInOneImage {
 				}
 				cell.radialTCR = getRadialProfile(ip.tcr,cell.boundary,tcr)
 				cell.radialICAM = getRadialProfile(ip.icam,cell.boundary,tcr)
-				val met = getTcrMetrics(ip.tcr,cell.boundary,tcr,cell.radialTCR)
+				val met = getTcrMetrics(ip.tcr,cell.boundary,tcr,cell.radialTCR,Config.metricsToCalc)
 				cell.metricsTCR = new HashMap[String,Float]
 				cell.metricsTCR ++= met
 			}
@@ -116,7 +116,7 @@ class CellDataInOneImage {
 	}
 	def recalcAllMetrics() {
 		loadImage()
-		cells.foreach(calcCellMetrics(_))
+		cells.par.foreach(calcCellMetrics(_))
 		releaseImage()
 	}
 	def readMetricsFromFolder(folder: Path) {

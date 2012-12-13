@@ -31,7 +31,8 @@ object Config {
   var numBin = 20
   var shuffleMode = false
   var batchMode = false
-  var cellPickMethod = CellPickMethod.CircleRect 
+  var cellPickMethod = CellPickMethod.CircleRect
+	var metricsToCalc: Array[String] = Array("all")
 }
 
 case class Circle(cx: Float, cy: Float, r: Float){

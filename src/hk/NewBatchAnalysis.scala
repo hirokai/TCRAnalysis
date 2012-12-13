@@ -14,8 +14,10 @@ import ij.plugin.CanvasResizer
  */
 object NewBatchAnalysis {
 	def run(parent: JFrame) {
+		Config.metricsToCalc = Array("all")
 		val data = new AllDataMatrix(null) //ToDo: pass a config file
 		data.recalcAndSaveAndCloseAllDataSet
+//		Config.metricsToCalc = Array("all")
 	}
 }
 
